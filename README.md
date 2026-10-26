@@ -1,7 +1,51 @@
-# Tauri + Vue + TypeScript
+# LiteStation
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+LiteStation is a focused cross-platform desktop application for working with
+local SQLite databases.
 
-## Recommended IDE Setup
+## Current capabilities
 
-- [VS Code](https://code.visualstudio.com/) + [Vue - Official](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+- Open an existing SQLite file through the native file picker.
+- Open it in read-only or read-write mode without creating a missing file.
+- Introspect tables, views, indexes, and triggers in the Rust backend.
+- Display the grouped schema in the Vue interface.
+- Retain an open database connection and close it explicitly.
+- Return structured backend errors for invalid paths and databases.
+- Exercise the database backend with automated Rust tests.
+
+SQL query execution, data editing, import/export, saved connections, and SSH
+connections are not implemented yet.
+
+## Stack
+
+- Tauri 2
+- Rust with `rusqlite`
+- Vue 3 and TypeScript
+- Vite and pnpm
+
+## Prerequisites
+
+Install a current Rust toolchain, Node.js with pnpm, and the system
+dependencies described by the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
+
+## Development
+
+```sh
+pnpm install
+pnpm tauri dev
+```
+
+Build the frontend:
+
+```sh
+pnpm build
+```
+
+Run the Rust test suite:
+
+```sh
+cargo test --workspace
+```
+
+Product direction and settled goals are documented in
+[`CONTEXT.md`](CONTEXT.md).

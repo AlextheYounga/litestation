@@ -29,15 +29,18 @@ The interface should feel focused and lightweight, exposing advanced functionali
 
 ## Current Project State
 
-The repository contains an initial application scaffold:
+The first local SQLite vertical slice is implemented:
 
-- Tauri 2 desktop shell.
-- Rust backend.
-- Vue 3 frontend using TypeScript.
-- Vite build tooling.
-- pnpm package management.
+- Tauri 2 desktop shell with a Rust backend and Vue 3 frontend using TypeScript.
+- Native file dialog for selecting an existing local SQLite file.
+- Read-only and read-write opening modes; opening a missing path does not create a file.
+- Rust-side schema introspection, grouped into tables, views, indexes, and triggers.
+- Vue schema browser showing the grouped objects and the active connection's path and mode.
+- Retained backend connections with an explicit close operation.
+- Structured backend errors for invalid paths and malformed databases.
+- Automated Rust backend coverage for schema ordering, malformed databases, read-only behavior, and read-write behavior.
 
-The generated demonstration UI and Rust greeting command remain in place. Database functionality has not yet been implemented.
+SQL query execution, data editing, import/export, saved connections, and SSH connections are not implemented yet.
 
 ## Core Product Principles
 
