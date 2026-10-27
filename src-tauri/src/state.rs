@@ -5,10 +5,11 @@ use rusqlite::Connection;
 
 use crate::database::OpenedDatabase;
 use crate::error::BackendError;
-use crate::model::OpenDatabaseResponse;
+use crate::model::{DatabaseMode, OpenDatabaseResponse};
 
 struct StoredDatabase {
     connection: Connection,
+    mode: DatabaseMode,
 }
 
 #[derive(Default)]
@@ -37,7 +38,7 @@ impl DatabaseState {
             mode: opened.mode,
             schema: opened.schema,
         };
-        let stored = StoredDatabase { connection: opened.connection };
+        let stored = StoredDatabase { connection: opened.connection, mode: opened.mode };
         self.connections.lock().map_err(lock_error)?.insert(id, stored);
         Ok(response)
     }
@@ -50,6 +51,18 @@ impl DatabaseState {
         } else {
             Err(BackendError::new("connection_not_found", "Database connection was not found"))
         }
+    }
+
+    pub fn with_database<T>(
+        &self,
+        id: u64,
+        operation: impl FnOnce(&Connection, DatabaseMode) -> Result<T, BackendError>,
+    ) -> Result<T, BackendError> {
+        let connections = self.connections.lock().map_err(lock_error)?;
+        let database = connections
+            .get(&id)
+            .ok_or_else(|| BackendError::new("connection_not_found", "Database connection was not found"))?;
+        operation(&database.connection, database.mode)
     }
 
     #[cfg(test)]

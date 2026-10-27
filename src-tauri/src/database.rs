@@ -1,9 +1,11 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::str;
 
-use rusqlite::{Connection, OpenFlags};
+use rusqlite::{types::ValueRef, Connection, OpenFlags, Row};
 
-use crate::error::BackendError;
+use crate::error::{BackendError, DATABASE_OPEN_FAILED, SCHEMA_LIMIT_EXCEEDED};
+use crate::limits::{SchemaBudget, MAX_SCHEMA_FIELD_BYTES};
 use crate::model::{DatabaseMode, DatabaseSchema, SchemaItem};
 
 pub struct OpenedDatabase {
@@ -29,30 +31,64 @@ pub fn open(path: &str, mode: DatabaseMode) -> Result<OpenedDatabase, BackendErr
         DatabaseMode::ReadWrite => OpenFlags::SQLITE_OPEN_READ_WRITE,
     };
     let connection = Connection::open_with_flags(&canonical_path, flags)
-        .map_err(|error| BackendError::database("database_open_failed", &error))?;
+        .map_err(|error| BackendError::database(DATABASE_OPEN_FAILED, &error))?;
     let schema = introspect(&connection)?;
 
     Ok(OpenedDatabase { path: canonical_path, mode, schema, connection })
 }
 
-fn introspect(connection: &Connection) -> Result<DatabaseSchema, BackendError> {
+pub fn introspect(connection: &Connection) -> Result<DatabaseSchema, BackendError> {
     let mut schema = DatabaseSchema::default();
-    schema.tables = objects_of_type(connection, "table")?;
-    schema.views = objects_of_type(connection, "view")?;
-    schema.indexes = objects_of_type(connection, "index")?;
-    schema.triggers = objects_of_type(connection, "trigger")?;
+    let mut budget = SchemaBudget::default();
+    schema.tables = objects_of_type(connection, "table", &mut budget)?;
+    schema.views = objects_of_type(connection, "view", &mut budget)?;
+    schema.indexes = objects_of_type(connection, "index", &mut budget)?;
+    schema.triggers = objects_of_type(connection, "trigger", &mut budget)?;
     Ok(schema)
 }
 
-fn objects_of_type(connection: &Connection, object_type: &str) -> Result<Vec<SchemaItem>, BackendError> {
+fn objects_of_type(
+    connection: &Connection,
+    object_type: &str,
+    budget: &mut SchemaBudget,
+) -> Result<Vec<SchemaItem>, BackendError> {
     let mut statement = connection
         .prepare("SELECT name, tbl_name, sql FROM sqlite_schema WHERE type = ?1 AND name NOT LIKE 'sqlite_%' ORDER BY name COLLATE BINARY")
         .map_err(|error| BackendError::database("schema_query_failed", &error))?;
-    let rows = statement
-        .query_map([object_type], |row| Ok(SchemaItem { name: row.get(0)?, table_name: row.get(1)?, sql: row.get(2)? }))
-        .map_err(|error| BackendError::database("schema_query_failed", &error))?;
+    let mut rows =
+        statement.query([object_type]).map_err(|error| BackendError::database("schema_query_failed", &error))?;
+    let mut items = Vec::new();
+    while let Some(row) = rows.next().map_err(|error| BackendError::database("schema_query_failed", &error))? {
+        let item = schema_item(row)?;
+        budget.add(&item)?;
+        items.push(item);
+    }
+    Ok(items)
+}
 
-    rows.collect::<Result<Vec<_>, _>>().map_err(|error| BackendError::database("schema_query_failed", &error))
+fn schema_item(row: &Row<'_>) -> Result<SchemaItem, BackendError> {
+    Ok(SchemaItem {
+        name: schema_field(row, 0)?.ok_or_else(schema_query_error)?,
+        table_name: schema_field(row, 1)?.ok_or_else(schema_query_error)?,
+        sql: schema_field(row, 2)?,
+    })
+}
+
+fn schema_field(row: &Row<'_>, index: usize) -> Result<Option<String>, BackendError> {
+    match row.get_ref(index).map_err(|error| BackendError::database("schema_query_failed", &error))? {
+        ValueRef::Null => Ok(None),
+        ValueRef::Text(bytes) => {
+            if bytes.len() > MAX_SCHEMA_FIELD_BYTES {
+                return Err(BackendError::new(SCHEMA_LIMIT_EXCEEDED, "Schema metadata exceeds configured limits"));
+            }
+            str::from_utf8(bytes).map(str::to_owned).map(Some).map_err(|_| schema_query_error())
+        }
+        _ => Err(schema_query_error()),
+    }
+}
+
+fn schema_query_error() -> BackendError {
+    BackendError::new("schema_query_failed", "Schema metadata contains an unexpected value")
 }
 
 #[cfg(test)]
