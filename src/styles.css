@@ -29,6 +29,45 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .grid-scroll table { border-collapse: separate; border-spacing: 0; }
 .grid-scroll th, .grid-scroll td { white-space: pre-wrap; overflow-wrap: anywhere; }
 
+/* Thin, unobtrusive scrollbars for dark panels. */
+* { scrollbar-width: thin; scrollbar-color: #2a3240 transparent; }
+
+/* Saved/recent connection lists on the welcome screen. */
+.catalog-list { display: grid; gap: 0.125rem; }
+.catalog-list > li {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+.catalog-list > li:hover { border-color: rgb(255 255 255 / 0.08); }
+
+/* Active workspace view in the sidebar. */
+button.active {
+  background: rgb(207 237 102 / 0.1);
+  color: #cfed66;
+}
+
+/* Soft entrance for overlays and sliding panels. */
+@keyframes overlay-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes dialog-in {
+  from { opacity: 0; transform: translateY(6px) scale(.98) }
+  to { opacity: 1; transform: none }
+}
+@keyframes panel-in {
+  from { opacity: 0; transform: translateX(16px) }
+  to { opacity: 1; transform: none }
+}
+.overlay-in { animation: overlay-in 120ms ease-out both; }
+.dialog-in { animation: dialog-in 140ms ease-out both; }
+.panel-in { animation: panel-in 180ms ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-in, .dialog-in, .panel-in { animation: none; }
+}
+
 @media (prefers-color-scheme: light) {
   :root { color-scheme: light; }
   body { background: #f5f7fb; color: #111827; }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { Play } from "@lucide/vue";
 import ConfirmDialog from "./ConfirmDialog.vue";
 import ResultGrid from "./ResultGrid.vue";
 import SqlEditor from "./SqlEditor.vue";
@@ -64,6 +65,7 @@ onBeforeUnmount(() => {
 async function run(selection: string, cursor: number, source = props.modelValue): Promise<void> {
   const text = selection || statementAtCursor(source, cursor);
   if (!text?.trim()) {
+    status.value = "";
     error.value = "Place the cursor in a SQL statement or select SQL to run.";
     return;
   }
@@ -72,6 +74,7 @@ async function run(selection: string, cursor: number, source = props.modelValue)
 
 async function requestRunAll(): Promise<void> {
   if (!runAllStatements.value.length) {
+    status.value = "";
     error.value = "There are no SQL statements to run.";
   } else if (runAllStatements.value.length === 1) {
     await requestExecution(runAllStatements.value[0].text);
@@ -82,6 +85,8 @@ async function requestRunAll(): Promise<void> {
 
 async function requestExecution(sql: string): Promise<void> {
   if (busy.value) return;
+  error.value = "";
+  status.value = "";
   if (isPotentiallyDestructive(sql)) {
     pendingSql.value = sql;
     return;
@@ -109,6 +114,7 @@ async function executeAll(): Promise<void> {
   let completed = 0;
   let changedSchema = false;
   running.value = true;
+  result.value = null;
   error.value = "";
 
   try {
@@ -127,6 +133,7 @@ async function executeAll(): Promise<void> {
       } catch (cause) {
         if (!isCurrent(token, connectionId)) return;
         error.value = `Statement ${index + 1} failed after ${completed} completed. Earlier successful statements remain applied because Run all is non-atomic. ${normalizeBackendError(cause).message}`;
+        status.value = "";
         return;
       }
     }
@@ -144,6 +151,7 @@ async function executeOne(sql: string): Promise<void> {
   const token = ++generation;
   const connectionId = props.connectionId;
   running.value = true;
+  result.value = null;
   error.value = "";
   status.value = "Running query…";
 
@@ -154,8 +162,10 @@ async function executeOne(sql: string): Promise<void> {
     status.value = "Statement completed.";
     if (response.schemaChanged) emit("schema-changed");
   } catch (cause) {
-    if (isCurrent(token, connectionId))
+    if (isCurrent(token, connectionId)) {
       error.value = normalizeBackendError(cause).message;
+      status.value = "";
+    }
   } finally {
     if (isCurrent(token, connectionId)) running.value = false;
   }
@@ -215,11 +225,11 @@ function exportError(cause: unknown): string {
       </div>
       <button
         type="button"
-        class="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white"
+        class="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-[#cfed66]/30 hover:bg-[#cfed66]/10 hover:text-[#cfed66]"
         :disabled="busy"
         @click="requestRunAll"
       >
-        Run all
+        <Play :size="12" /> Run all
       </button>
     </header>
     <SqlEditor
@@ -232,18 +242,18 @@ function exportError(cause: unknown): string {
       {{ status }}
     </p>
     <div v-if="result" class="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-      <span class="rounded-md bg-white/5 px-2 py-1">{{ result.durationMs }} ms</span>
-      <span v-if="result.affectedRows !== null" class="rounded-md bg-white/5 px-2 py-1"
+      <span class="rounded-md border border-white/8 bg-white/[.03] px-2 py-1">{{ result.durationMs }} ms</span>
+      <span v-if="result.affectedRows !== null" class="rounded-md border border-white/8 bg-white/[.03] px-2 py-1"
         >{{ result.affectedRows }} affected</span
       >
-      <span v-if="result.truncated" class="rounded-md bg-amber-400/10 px-2 py-1 text-amber-300"
+      <span v-if="result.truncated" class="rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-amber-300"
         >Showing first 100 rows; result was truncated.</span
       >
     </div>
     <div v-if="result?.columns.length" class="flex flex-wrap items-center gap-2" aria-label="Export displayed query result">
-      <span class="mr-1 text-[11px] text-slate-600">Export displayed rows</span>
-      <button type="button" class="rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] text-slate-400 hover:bg-white/5 hover:text-white" :disabled="busy" @click="exportResult('json')">Export JSON</button>
-      <button type="button" class="rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] text-slate-400 hover:bg-white/5 hover:text-white" :disabled="busy" @click="exportResult('csv')">Export CSV</button>
+      <span class="text-[11px] text-slate-600">Export displayed rows</span>
+      <button type="button" class="rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] text-slate-400 transition hover:bg-white/5 hover:text-white" :disabled="busy" @click="exportResult('json')">Export JSON</button>
+      <button type="button" class="rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] text-slate-400 transition hover:bg-white/5 hover:text-white" :disabled="busy" @click="exportResult('csv')">Export CSV</button>
     </div>
     <ResultGrid
       v-if="result"

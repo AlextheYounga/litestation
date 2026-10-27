@@ -288,7 +288,7 @@ function exportError(cause: unknown): string {
           title="Refresh rows"
           aria-label="Refresh rows"
           @click="load(page?.offset ?? 0)"
-        ><RefreshCw :size="14" /></button>
+        ><RefreshCw :size="14" :class="{ 'animate-spin': loading }" /></button>
         <button
           class="flex h-8 items-center gap-1.5 rounded-md bg-[#cfed66] px-3 text-xs font-semibold text-[#182010] transition hover:bg-[#d9f57c] disabled:hover:bg-[#cfed66]"
           :disabled="!canMutate || busy"

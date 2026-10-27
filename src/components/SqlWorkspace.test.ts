@@ -47,6 +47,24 @@ describe("SqlWorkspace", () => {
     wrapper.unmount();
   });
 
+  it("returns to an idle state and clears stale results after a failed query", async () => {
+    services.executeSql.mockRejectedValueOnce(new Error("syntax error"));
+    const wrapper = mount(SqlWorkspace, {
+      props: { connectionId: 1, modelValue: "SELECT broken;" },
+    });
+    const editor = wrapper.findComponent({ name: "SqlEditor" });
+
+    await editor.vm.$emit("run", "", 0);
+
+    await vi.waitFor(() => expect(wrapper.text()).toContain("syntax error"));
+    expect(wrapper.text()).not.toContain("Running query");
+    expect(wrapper.find('p[role="status"]').exists()).toBe(false);
+
+    await editor.vm.$emit("run", "", 0);
+    await vi.waitFor(() => expect(wrapper.text()).toContain("Statement completed."));
+    wrapper.unmount();
+  });
+
   it("exports exactly the displayed bounded columns and rows", async () => {
     const wrapper = mount(SqlWorkspace, { props: { connectionId: 1, modelValue: "SELECT name FROM users;" } });
     await wrapper.findComponent({ name: "SqlEditor" }).vm.$emit("run", "", 0);

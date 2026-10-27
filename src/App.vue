@@ -1,6 +1,16 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { Bookmark, BookmarkX, Unplug, X } from "@lucide/vue";
+import {
+  Bookmark,
+  BookmarkX,
+  Clock,
+  Database,
+  FolderOpen,
+  SquareTerminal,
+  Star,
+  Unplug,
+  X,
+} from "@lucide/vue";
 import SchemaBrowser from "./components/SchemaBrowser.vue";
 import DatabaseTools from "./components/DatabaseTools.vue";
 import SqlWorkspace from "./components/SqlWorkspace.vue";
@@ -196,40 +206,44 @@ async function updateSchema(): Promise<void> {
         <span>LiteStation</span>
       </div>
       <div v-if="connection" class="hidden items-center gap-2 text-slate-400 sm:flex">
-        <span class="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]" aria-hidden="true"></span>
+        <span class="grid size-5 place-items-center rounded bg-[#cfed66]/10 text-[#cfed66]" aria-hidden="true"><Database :size="11" /></span>
         <span>{{ connection.displayName }}</span>
         <span class="max-w-80 truncate text-slate-600">{{ connection.path }}</span>
       </div>
-      <span class="text-[11px] text-slate-500">SQLite workspace</span>
+      <span class="hidden rounded-full border border-white/10 bg-white/[.03] px-2.5 py-1 text-[11px] text-slate-500 sm:block">Local · SQLite</span>
     </header>
-    <section v-if="!hasConnection" class="mx-auto grid min-h-0 max-w-5xl flex-1 items-center gap-12 overflow-auto px-6 py-16 lg:grid-cols-[1fr_400px]">
-      <div class="max-w-xl">
+    <section v-if="!hasConnection" class="relative mx-auto grid min-h-0 max-w-5xl flex-1 items-center gap-12 overflow-auto px-6 py-16 lg:grid-cols-[1fr_400px]">
+      <div class="pointer-events-none absolute left-0 top-1/3 hidden h-96 w-96 -translate-x-24 rounded-full bg-[#cfed66]/6 blur-3xl lg:block" aria-hidden="true"></div>
+      <div class="relative max-w-xl">
         <span class="mb-5 inline-flex items-center gap-2 rounded-full border border-[#cfed66]/20 bg-[#cfed66]/8 px-3 py-1.5 text-[11px] font-medium text-[#cfed66]"><span class="size-1.5 rounded-full bg-[#cfed66]"></span>Local-first SQLite</span>
         <h1 class="text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">A focused workspace<br /><span class="text-[#cfed66]">for your databases.</span></h1>
         <p class="mt-5 max-w-md text-sm leading-7 text-slate-400">Browse schemas, edit data, run queries, and export results without your database ever leaving this device.</p>
       </div>
       <form class="rounded-2xl border border-white/10 bg-[#11151d] p-6 shadow-2xl shadow-black/20" @submit.prevent="openEnteredPath">
-        <div class="mb-5 grid size-11 place-items-center rounded-xl border border-[#cfed66]/15 bg-[#cfed66]/8 text-xl text-[#cfed66]" aria-hidden="true">⌁</div>
+        <div class="mb-5 grid size-11 place-items-center rounded-xl border border-[#cfed66]/15 bg-[#cfed66]/8 text-[#cfed66]" aria-hidden="true"><Database :size="20" /></div>
         <div>
           <h2 class="text-base font-semibold text-white">Open a SQLite database</h2>
           <p class="mt-1 text-xs leading-5 text-slate-500">Enter the path to, or choose, an existing <code>.db</code>, <code>.sqlite</code>, or <code>.sqlite3</code> file.</p>
         </div>
         <label class="mt-6 block text-[11px] font-medium text-slate-400" for="database-path">Database path</label>
-        <input
-          id="database-path"
-          v-model="selectedPath"
-          class="mt-2 block w-full rounded-lg border border-white/10 bg-black/15 px-3 py-2.5 text-xs text-slate-200 placeholder:text-slate-600"
-          type="text"
-          placeholder="/path/to/database.sqlite"
-          :disabled="opening || pickerBusy"
-          @input="errorMessage = ''"
-        />
+        <div class="relative mt-2">
+          <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" aria-hidden="true"><FolderOpen :size="13" /></span>
+          <input
+            id="database-path"
+            v-model="selectedPath"
+            class="mt-0 block w-full rounded-lg border border-white/10 bg-black/15 py-2.5 pl-9 pr-3 text-xs text-slate-200 transition placeholder:text-slate-600 focus:border-[#cfed66]/40 focus:outline-none focus:ring-2 focus:ring-[#cfed66]/15"
+            type="text"
+            placeholder="/path/to/database.sqlite"
+            :disabled="opening || pickerBusy"
+            @input="errorMessage = ''"
+          />
+        </div>
         <div class="mt-3 grid grid-cols-2 gap-2">
           <button class="rounded-lg bg-[#cfed66] px-4 py-2.5 text-xs font-semibold text-[#182010] shadow-lg shadow-[#cfed66]/10 transition hover:bg-[#d9f57c] disabled:hover:bg-[#cfed66]" :disabled="opening || pickerBusy">
             {{ opening ? "Opening…" : "Open database" }}
           </button>
-          <button type="button" class="rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white" :disabled="opening || pickerBusy" @click="openDatabase">
-            {{ pickerBusy ? "Choosing…" : "Choose file" }}
+          <button type="button" class="flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white" :disabled="opening || pickerBusy" @click="openDatabase">
+            <FolderOpen :size="13" /> {{ pickerBusy ? "Choosing…" : "Choose file" }}
           </button>
         </div>
         <p v-if="errorMessage" class="mt-3 rounded-lg border border-rose-400/20 bg-rose-400/5 px-3 py-2 text-xs text-rose-300" role="alert">
@@ -245,9 +259,10 @@ async function updateSchema(): Promise<void> {
         aria-label="Saved and recent databases"
       >
           <div v-if="savedConnections.length" class="space-y-2">
-            <h2 class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Saved</h2>
+            <h2 class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500"><Star :size="11" class="text-[#cfed66]/70" /> Saved</h2>
           <ul class="catalog-list">
             <li v-for="entry in savedConnections" :key="entry.id">
+              <span class="ml-2 grid size-4 shrink-0 place-items-center text-slate-600" aria-hidden="true"><Database :size="11" /></span>
               <button type="button" class="grid min-w-0 flex-1 rounded-lg px-3 py-2 text-left transition hover:bg-white/5" :disabled="controlsDisabled" @click="openPath(entry.path)">
                 <strong class="truncate text-xs font-medium text-slate-200">{{ entry.displayName }}</strong><span class="truncate text-[11px] text-slate-500">{{ entry.path }}</span>
               </button>
@@ -256,9 +271,10 @@ async function updateSchema(): Promise<void> {
           </ul>
         </div>
           <div v-if="recentConnections.length" class="space-y-2">
-            <h2 class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Recent</h2>
+            <h2 class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500"><Clock :size="11" /> Recent</h2>
           <ul class="catalog-list">
             <li v-for="entry in recentConnections" :key="entry.id">
+              <span class="ml-2 grid size-4 shrink-0 place-items-center text-slate-600" aria-hidden="true"><Database :size="11" /></span>
               <button type="button" class="grid min-w-0 flex-1 rounded-lg px-3 py-2 text-left transition hover:bg-white/5" :disabled="controlsDisabled" @click="openPath(entry.path)">
                 <strong class="truncate text-xs font-medium text-slate-200">{{ entry.displayName }}</strong><span class="truncate text-[11px] text-slate-500">{{ entry.path }} · {{ formatOpenedAt(entry.lastOpenedAt) }}</span>
               </button>
@@ -281,7 +297,7 @@ async function updateSchema(): Promise<void> {
             :disabled="controlsDisabled"
             @click="selectedTable = null"
           >
-            <span class="text-sm text-[#cfed66]" aria-hidden="true">›_</span>
+            <span class="text-[#cfed66]" aria-hidden="true"><SquareTerminal :size="14" /></span>
             <span :class="selectedTable === null ? 'text-slate-100' : 'text-slate-400'">SQL editor</span>
           </button>
         </nav>

@@ -60,7 +60,7 @@ function submit(): void {
 </script>
 
 <template>
-  <form class="fixed inset-y-14 right-0 z-30 flex w-full max-w-md flex-col overflow-hidden border-l border-white/10 bg-[#11151b] shadow-2xl shadow-black/50" @submit.prevent="submit">
+  <form class="panel-in fixed inset-y-14 right-0 z-30 flex w-full max-w-md flex-col overflow-hidden border-l border-white/10 bg-[#11151b] shadow-2xl shadow-black/50" @submit.prevent="submit">
     <header class="flex h-14 shrink-0 items-center justify-between border-b border-white/8 px-4">
       <div>
         <p class="text-[10px] font-semibold uppercase tracking-widest text-[#cfed66]">Row details</p>
@@ -108,10 +108,11 @@ function submit(): void {
       </label>
       <p v-if="error" class="rounded-md border border-rose-400/20 bg-rose-400/5 px-3 py-2 text-xs text-rose-300" role="alert">{{ error }}</p>
     </div>
-    <footer class="shrink-0 border-t border-white/8 p-3">
-      <button class="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-[#cfed66] text-xs font-semibold text-[#182010] hover:bg-[#d9f57c]" :disabled="busy" type="submit">
+    <footer class="flex shrink-0 items-center gap-2 border-t border-white/8 p-3">
+      <button class="flex h-9 flex-1 items-center justify-center gap-2 rounded-md bg-[#cfed66] text-xs font-semibold text-[#182010] transition hover:bg-[#d9f57c]" :disabled="busy" type="submit">
         <Save :size="14" /> {{ insert ? "Insert row" : "Save changes" }}
       </button>
+      <button class="flex h-9 items-center justify-center rounded-md border border-white/10 px-4 text-xs font-medium text-slate-400 transition hover:bg-white/5 hover:text-white" :disabled="busy" type="button" @click="emit('cancel')">Cancel</button>
     </footer>
   </form>
 </template>

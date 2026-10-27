@@ -132,8 +132,8 @@ async function exportDump(): Promise<void> {
       <button type="button" class="flex h-7 items-center gap-1.5 rounded px-2 text-[10px] text-slate-500 transition hover:bg-white/5 hover:text-slate-100 disabled:hover:bg-transparent" :disabled="busy" title="Create SQLite copy" @click="createSqliteCopy"><Copy :size="13" />Create copy</button>
       <button type="button" class="flex h-7 items-center gap-1.5 rounded px-2 text-[10px] text-slate-500 transition hover:bg-white/5 hover:text-slate-100 disabled:hover:bg-transparent" :disabled="busy" title="Export SQL dump" @click="exportDump"><FileUp :size="13" />Export dump</button>
     </div>
-    <p v-if="error" class="fixed bottom-12 right-3 z-40 max-w-sm rounded-lg border border-rose-400/20 bg-[#1b1216] px-3 py-2 text-[11px] text-rose-300 shadow-xl" role="alert">{{ error }}</p>
-    <p v-if="status" class="fixed bottom-12 right-3 z-40 max-w-sm rounded-lg border border-emerald-400/20 bg-[#101a17] px-3 py-2 text-[11px] text-emerald-300 shadow-xl" role="status">{{ status }}</p>
+    <p v-if="error" class="overlay-in fixed bottom-12 right-3 z-40 max-w-sm rounded-lg border border-rose-400/20 bg-[#1b1216] px-3 py-2 text-[11px] text-rose-300 shadow-xl" role="alert">{{ error }}</p>
+    <p v-if="status" class="overlay-in fixed bottom-12 right-3 z-40 max-w-sm rounded-lg border border-emerald-400/20 bg-[#101a17] px-3 py-2 text-[11px] text-emerald-300 shadow-xl" role="status">{{ status }}</p>
     <ConfirmDialog :open="confirmSqlImport" title="Import SQL dump?" message="This can alter schema and data. The import is atomic: it either completes or rolls back." confirm-label="Import SQL dump" @cancel="confirmSqlImport = false" @confirm="importSql" />
   </section>
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { Table2, Eye, Zap } from "@lucide/vue";
 import type { DatabaseSchema, SchemaItem } from "../types/database";
 
 const props = defineProps<{
@@ -9,10 +10,14 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ selectTable: [name: string] }>();
 
-const groups: Array<{ key: keyof DatabaseSchema; label: string }> = [
-  { key: "tables", label: "Tables" },
-  { key: "views", label: "Views" },
-  { key: "triggers", label: "Triggers" },
+const groups: Array<{
+  key: keyof DatabaseSchema;
+  label: string;
+  icon: typeof Table2;
+}> = [
+  { key: "tables", label: "Tables", icon: Table2 },
+  { key: "views", label: "Views", icon: Eye },
+  { key: "triggers", label: "Triggers", icon: Zap },
 ];
 
 const objectTotal = computed<number>(() =>
@@ -31,7 +36,7 @@ function itemLabel(item: SchemaItem): string {
         <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-600">Object browser</p>
         <h2 id="schema-heading" class="mt-1 text-xs font-semibold text-slate-300">Schema</h2>
       </div>
-      <span class="text-[10px] text-slate-600">{{ objectTotal }}</span>
+      <span class="rounded-full border border-white/10 bg-white/[.03] px-2 py-0.5 text-[10px] text-slate-500">{{ objectTotal }}</span>
     </div>
 
     <div class="schema-groups">
@@ -41,29 +46,39 @@ function itemLabel(item: SchemaItem): string {
         class="mt-5"
         :aria-labelledby="`${group.key}-heading`"
       >
-        <h3 :id="`${group.key}-heading`" class="mb-1 flex items-center justify-between px-2 text-[10px] font-medium uppercase tracking-widest text-slate-600">
-          <span>{{ group.label }}</span>
-          <span>{{ schema[group.key].length }}</span>
+        <h3 :id="`${group.key}-heading`" class="mb-1.5 flex items-center gap-1.5 px-2 text-[10px] font-medium uppercase tracking-widest text-slate-600">
+          <component :is="group.icon" :size="11" class="shrink-0 text-slate-500" />
+          <span class="min-w-0 flex-1">{{ group.label }}</span>
+          <span v-if="schema[group.key].length" class="shrink-0 normal-case tracking-normal text-slate-600">{{ schema[group.key].length }}</span>
         </h3>
         <ul v-if="schema[group.key].length" class="space-y-0.5">
           <li
             v-for="item in schema[group.key]"
             :key="`${group.key}-${item.name}`"
           >
-            <span class="ml-2 size-1 shrink-0 rounded-full bg-slate-600" aria-hidden="true"></span>
-            <button
-              v-if="group.key === 'tables'"
-              type="button"
-              :disabled="disabled"
-              class="w-full truncate rounded-md px-2 py-1.5 text-left text-xs text-slate-400 transition hover:bg-white/5 hover:text-slate-200 disabled:hover:bg-transparent"
-              :class="selectedTable === item.name ? 'bg-[#cfed66]/10 text-[#cfed66]' : ''"
-              @click="emit('selectTable', item.name)"
-            >
-              {{ itemLabel(item) }}
-            </button>
-            <span v-else class="truncate px-2 py-1 text-xs text-slate-500" :title="item.sql ?? undefined">{{
-              itemLabel(item)
-            }}</span>
+            <div class="group relative">
+              <span
+                v-if="group.key === 'tables' && selectedTable === item.name"
+                class="absolute inset-y-1 left-0 w-0.5 rounded-full bg-[#cfed66]"
+                aria-hidden="true"
+              ></span>
+              <button
+                v-if="group.key === 'tables'"
+                type="button"
+                :disabled="disabled"
+                class="w-full truncate rounded-md px-3 py-1.5 text-left text-xs transition hover:bg-white/5 hover:text-slate-200 disabled:hover:bg-transparent"
+                :class="selectedTable === item.name ? 'bg-[#cfed66]/10 text-[#cfed66]' : 'text-slate-400'"
+                :title="item.name"
+                @click="emit('selectTable', item.name)"
+              >
+                {{ itemLabel(item) }}
+              </button>
+              <span
+                v-else
+                class="block truncate rounded-md px-3 py-1.5 text-xs text-slate-500"
+                :title="item.sql ?? item.name"
+              >{{ itemLabel(item) }}</span>
+            </div>
           </li>
         </ul>
         <p v-else class="px-2 text-[11px] text-slate-700">
@@ -73,3 +88,7 @@ function itemLabel(item: SchemaItem): string {
     </div>
   </section>
 </template>
+
+<style scoped>
+/* Keep the SFC style module stable during Vite HMR; styling uses Tailwind. */
+</style>

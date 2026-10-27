@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from "vue";
+import { Info, TriangleAlert } from "@lucide/vue";
 
 const props = withDefaults(
   defineProps<{
@@ -77,27 +78,32 @@ onBeforeUnmount(() => invokingElement?.focus());
 <template>
   <div
     v-if="open"
-    class="fixed inset-0 z-50 grid place-items-center bg-black/70 p-5 backdrop-blur-sm"
+    class="overlay-in fixed inset-0 z-50 grid place-items-center bg-black/70 p-5 backdrop-blur-sm"
     role="presentation"
     @mousedown.self="cancel"
   >
     <section
       ref="dialog"
-      class="dialog w-full max-w-sm rounded-xl border border-white/10 bg-[#151920] p-5 shadow-2xl shadow-black/60"
+      class="dialog dialog-in w-full max-w-sm rounded-xl border border-white/10 bg-[#151920] p-5 shadow-2xl shadow-black/60"
       role="alertdialog"
       aria-modal="true"
-       :aria-labelledby="titleId"
-       :aria-describedby="messageId"
+      :aria-labelledby="titleId"
+      :aria-describedby="messageId"
       @keydown="handleKeydown"
     >
+      <div class="mb-3 grid size-9 place-items-center rounded-lg border" :class="destructive ? 'border-rose-400/20 bg-rose-500/10 text-rose-300' : 'border-[#cfed66]/20 bg-[#cfed66]/10 text-[#cfed66]'" aria-hidden="true">
+        <component :is="destructive ? TriangleAlert : Info" :size="16" />
+      </div>
       <h2 :id="titleId" class="text-base font-semibold text-white">{{ title }}</h2>
       <p :id="messageId" class="mt-2 text-xs leading-5 text-slate-400">{{ message }}</p>
       <div class="mt-5 flex justify-end gap-2">
-        <button ref="cancelButton" type="button" class="rounded-md border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/5" @click="cancel">Cancel</button>
+        <button ref="cancelButton" type="button" class="rounded-md border border-white/10 px-3 py-2 text-xs text-slate-300 transition hover:bg-white/5" @click="cancel">Cancel</button>
         <button
           type="button"
-          class="rounded-md border border-rose-400/20 bg-rose-500/15 px-3 py-2 text-xs font-medium text-rose-200 hover:bg-rose-500/25"
-          :class="{ danger: destructive }"
+          class="rounded-md border px-3 py-2 text-xs font-medium transition"
+          :class="destructive
+            ? 'danger border-rose-400/20 bg-rose-500/15 text-rose-200 hover:bg-rose-500/25'
+            : 'border-[#cfed66]/20 bg-[#cfed66]/15 text-[#cfed66] hover:bg-[#cfed66]/25'"
           @click="emit('confirm')"
         >
           {{ confirmLabel }}
