@@ -80,6 +80,17 @@ async function openDatabase(): Promise<void> {
   await openPath(path);
 }
 
+async function openEnteredPath(): Promise<void> {
+  const path = selectedPath.value.trim();
+  if (!path) {
+    errorMessage.value = "Enter the path to an existing SQLite database.";
+    return;
+  }
+
+  selectedPath.value = path;
+  await openPath(path);
+}
+
 async function openPath(path: string): Promise<void> {
   if (opening.value || pickerBusy.value || connection.value) return;
   const generation = ++connectionGeneration;
@@ -177,110 +188,134 @@ async function updateSchema(): Promise<void> {
 </script>
 
 <template>
-  <main class="app-shell">
-    <header class="topbar">
-      <span class="brand"><b>L</b> LiteStation</span
-      ><span>SQLite workspace</span>
-    </header>
-    <section v-if="!hasConnection" class="welcome">
-      <div>
-        <p class="eyebrow">Local database</p>
-        <h1>Open a database<br /><em>with confidence.</em></h1>
-        <p>Your database stays on this device.</p>
+  <main class="min-h-screen bg-[#090b0f] text-slate-200">
+    <header class="flex h-14 items-center justify-between border-b border-white/8 bg-[#0d1016] px-5 text-xs">
+      <div class="flex items-center gap-2.5 font-semibold tracking-tight text-slate-100">
+        <span class="grid size-6 place-items-center rounded-md bg-[#cfed66] text-[11px] font-black text-[#182010] shadow-lg shadow-[#cfed66]/15" aria-hidden="true">L</span>
+        <span>LiteStation</span>
       </div>
-      <form class="open-card" @submit.prevent="openDatabase">
-        <p class="path">
-          {{ selectedPath || "Choose an existing SQLite file" }}
-        </p>
-        <button class="primary-button" :disabled="opening || pickerBusy">
-          {{ pickerBusy ? "Choosing…" : opening ? "Opening…" : "Choose database" }}
-        </button>
-        <p v-if="errorMessage" class="error-message" role="alert">
+      <div v-if="connection" class="hidden items-center gap-2 text-slate-400 sm:flex">
+        <span class="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]" aria-hidden="true"></span>
+        <span>{{ connection.displayName }}</span>
+        <span class="max-w-80 truncate text-slate-600">{{ connection.path }}</span>
+      </div>
+      <span class="text-[11px] text-slate-500">SQLite workspace</span>
+    </header>
+    <section v-if="!hasConnection" class="mx-auto grid min-h-[calc(100vh-3.5rem)] max-w-5xl items-center gap-12 px-6 py-16 lg:grid-cols-[1fr_400px]">
+      <div class="max-w-xl">
+        <span class="mb-5 inline-flex items-center gap-2 rounded-full border border-[#cfed66]/20 bg-[#cfed66]/8 px-3 py-1.5 text-[11px] font-medium text-[#cfed66]"><span class="size-1.5 rounded-full bg-[#cfed66]"></span>Local-first SQLite</span>
+        <h1 class="text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">A focused workspace<br /><span class="text-[#cfed66]">for your databases.</span></h1>
+        <p class="mt-5 max-w-md text-sm leading-7 text-slate-400">Browse schemas, edit data, run queries, and export results without your database ever leaving this device.</p>
+      </div>
+      <form class="rounded-2xl border border-white/10 bg-[#11151d] p-6 shadow-2xl shadow-black/20" @submit.prevent="openEnteredPath">
+        <div class="mb-5 grid size-11 place-items-center rounded-xl border border-[#cfed66]/15 bg-[#cfed66]/8 text-xl text-[#cfed66]" aria-hidden="true">⌁</div>
+        <div>
+          <h2 class="text-base font-semibold text-white">Open a SQLite database</h2>
+          <p class="mt-1 text-xs leading-5 text-slate-500">Enter the path to, or choose, an existing <code>.db</code>, <code>.sqlite</code>, or <code>.sqlite3</code> file.</p>
+        </div>
+        <label class="mt-6 block text-[11px] font-medium text-slate-400" for="database-path">Database path</label>
+        <input
+          id="database-path"
+          v-model="selectedPath"
+          class="mt-2 block w-full rounded-lg border border-white/10 bg-black/15 px-3 py-2.5 text-xs text-slate-200 placeholder:text-slate-600"
+          type="text"
+          placeholder="/path/to/database.sqlite"
+          :disabled="opening || pickerBusy"
+          @input="errorMessage = ''"
+        />
+        <div class="mt-3 grid grid-cols-2 gap-2">
+          <button class="rounded-lg bg-[#cfed66] px-4 py-2.5 text-xs font-semibold text-[#182010] shadow-lg shadow-[#cfed66]/10 transition hover:bg-[#d9f57c] disabled:hover:bg-[#cfed66]" :disabled="opening || pickerBusy">
+            {{ opening ? "Opening…" : "Open database" }}
+          </button>
+          <button type="button" class="rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white" :disabled="opening || pickerBusy" @click="openDatabase">
+            {{ pickerBusy ? "Choosing…" : "Choose file" }}
+          </button>
+        </div>
+        <p v-if="errorMessage" class="mt-3 rounded-lg border border-rose-400/20 bg-rose-400/5 px-3 py-2 text-xs text-rose-300" role="alert">
           {{ errorMessage }}
         </p>
-        <p v-if="persistenceWarning" class="persistence-warning" role="status">
+        <p v-if="persistenceWarning" class="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-xs text-amber-300" role="status">
           Connection metadata could not be saved. Database work still works; check local storage permissions.
         </p>
       </form>
-      <section
+        <section
         v-if="savedConnections.length || recentConnections.length"
-        class="connection-catalog"
+        class="col-span-full grid max-h-64 gap-5 overflow-auto rounded-xl border border-white/8 bg-[#0f131a] p-5 lg:col-start-2"
         aria-label="Saved and recent databases"
       >
-        <div v-if="savedConnections.length" class="catalog-section">
-          <h2>Saved</h2>
+          <div v-if="savedConnections.length" class="space-y-2">
+            <h2 class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Saved</h2>
           <ul class="catalog-list">
             <li v-for="entry in savedConnections" :key="entry.id">
-              <button type="button" class="catalog-open" :disabled="controlsDisabled" @click="openPath(entry.path)">
-                <strong>{{ entry.displayName }}</strong><span>{{ entry.path }}</span>
+              <button type="button" class="grid min-w-0 flex-1 rounded-lg px-3 py-2 text-left transition hover:bg-white/5" :disabled="controlsDisabled" @click="openPath(entry.path)">
+                <strong class="truncate text-xs font-medium text-slate-200">{{ entry.displayName }}</strong><span class="truncate text-[11px] text-slate-500">{{ entry.path }}</span>
               </button>
-              <button type="button" class="catalog-forget" :disabled="controlsDisabled" :aria-label="`Forget saved connection ${entry.displayName}; database files are not deleted`" @click="forgetConnection(entry)">Forget</button>
+              <button type="button" class="px-2 text-[10px] text-slate-600 hover:text-rose-300" :disabled="controlsDisabled" :aria-label="`Forget saved connection ${entry.displayName}; database files are not deleted`" @click="forgetConnection(entry)">Forget</button>
             </li>
           </ul>
         </div>
-        <div v-if="recentConnections.length" class="catalog-section">
-          <h2>Recent</h2>
+          <div v-if="recentConnections.length" class="space-y-2">
+            <h2 class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Recent</h2>
           <ul class="catalog-list">
             <li v-for="entry in recentConnections" :key="entry.id">
-              <button type="button" class="catalog-open" :disabled="controlsDisabled" @click="openPath(entry.path)">
-                <strong>{{ entry.displayName }}</strong><span>{{ entry.path }}</span><small>{{ formatOpenedAt(entry.lastOpenedAt) }}</small>
+              <button type="button" class="grid min-w-0 flex-1 rounded-lg px-3 py-2 text-left transition hover:bg-white/5" :disabled="controlsDisabled" @click="openPath(entry.path)">
+                <strong class="truncate text-xs font-medium text-slate-200">{{ entry.displayName }}</strong><span class="truncate text-[11px] text-slate-500">{{ entry.path }} · {{ formatOpenedAt(entry.lastOpenedAt) }}</span>
               </button>
-              <button type="button" class="catalog-forget" :disabled="controlsDisabled" :aria-label="`Forget recent connection ${entry.displayName}; database files are not deleted`" @click="forgetConnection(entry)">Forget</button>
+              <button type="button" class="px-2 text-[10px] text-slate-600 hover:text-rose-300" :disabled="controlsDisabled" :aria-label="`Forget recent connection ${entry.displayName}; database files are not deleted`" @click="forgetConnection(entry)">Forget</button>
             </li>
           </ul>
         </div>
-        <p class="catalog-note">Forget removes LiteStation metadata only. It never deletes database files.</p>
+        <p class="text-[10px] text-slate-600">Forget removes LiteStation metadata only. It never deletes database files.</p>
       </section>
     </section>
-    <section v-else class="workspace">
-      <aside class="connection-sidebar">
-        <p class="eyebrow">Active connection</p>
-        <h1>{{ connection?.displayName }}</h1>
-        <p class="path">{{ connection?.path }}</p>
-        <button
-          v-if="activeCatalogEntry?.saved"
-          type="button"
-          class="secondary"
-          :disabled="controlsDisabled"
-          @click="unsaveConnection(activeCatalogEntry)"
-        >
-          Remove from saved connections
-        </button>
-        <button
-          v-else
-          type="button"
-          class="secondary"
-          :disabled="controlsDisabled"
-          @click="saveActiveConnection"
-        >
-          Save connection
-        </button>
-        <button
-          v-if="activeCatalogEntry"
-          type="button"
-          class="secondary catalog-forget"
-          :disabled="controlsDisabled"
-          @click="forgetConnection(activeCatalogEntry)"
-        >
-          Forget metadata (keeps file)
-        </button>
-        <button
-          class="secondary"
-          :disabled="controlsDisabled"
-          @click="closeConnection"
-        >
-          Close connection
-        </button>
-        <nav class="workspace-navigation" aria-label="Workspace views">
+    <section v-else class="grid min-h-[calc(100vh-3.5rem)] grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <aside class="border-b border-white/8 bg-[#0d1016] p-4 lg:border-b-0 lg:border-r">
+        <div class="rounded-xl border border-white/8 bg-white/[.025] p-3">
+          <div class="connection-title">
+            <span class="size-2 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]" aria-hidden="true"></span>
+            <div>
+              <p class="text-[10px] uppercase tracking-widest text-emerald-400">Connected</p>
+              <h1 class="mt-1 truncate text-sm font-semibold text-slate-100">{{ connection?.displayName }}</h1>
+            </div>
+          </div>
+          <p class="mt-3 truncate text-[10px] text-slate-500" :title="connection?.path">{{ connection?.path }}</p>
+          <div class="mt-3 flex flex-wrap gap-1.5">
+            <button
+              v-if="activeCatalogEntry?.saved"
+              type="button"
+              class="rounded-md border border-white/10 px-2 py-1 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"
+              :disabled="controlsDisabled"
+              @click="unsaveConnection(activeCatalogEntry)"
+            >Unsave</button>
+            <button
+              v-else
+              type="button"
+              class="rounded-md border border-white/10 px-2 py-1 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"
+              :disabled="controlsDisabled"
+              @click="saveActiveConnection"
+            >Save</button>
+            <button
+              v-if="activeCatalogEntry"
+              type="button"
+              class="rounded-md border border-white/10 px-2 py-1 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"
+              :disabled="controlsDisabled"
+              @click="forgetConnection(activeCatalogEntry)"
+            >Forget</button>
+            <button class="rounded-md border border-rose-400/15 px-2 py-1 text-[10px] text-rose-300/80 hover:bg-rose-400/10" :disabled="controlsDisabled" @click="closeConnection">Disconnect</button>
+          </div>
+        </div>
+        <nav class="mt-7" aria-label="Workspace views">
+          <p class="mb-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Workspace</p>
           <button
             type="button"
-            class="workspace-navigation-button"
+            class="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition hover:bg-white/5 disabled:hover:bg-transparent"
             :class="{ active: selectedTable === null }"
             :aria-current="selectedTable === null ? 'page' : undefined"
             :disabled="controlsDisabled"
             @click="selectedTable = null"
           >
-            SQL Query
+            <span class="text-sm text-[#cfed66]" aria-hidden="true">›_</span>
+            <span :class="selectedTable === null ? 'text-slate-100' : 'text-slate-400'">SQL editor</span>
           </button>
         </nav>
         <SchemaBrowser
@@ -297,7 +332,7 @@ async function updateSchema(): Promise<void> {
           @schema-imported="applySqlImport"
         />
       </aside>
-      <section class="content">
+      <section class="min-w-0 overflow-auto bg-[#0a0d12] p-5 sm:p-7">
         <p v-if="persistenceWarning" class="persistence-warning" role="status">
           Connection metadata could not be saved. Database work still works; check local storage permissions.
         </p>

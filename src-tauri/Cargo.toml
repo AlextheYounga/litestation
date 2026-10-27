@@ -1,8 +1,8 @@
 [package]
 name = "litestation"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "A modern SQLite GUI"
+authors = ["Alex Younger"]
 edition = "2021"
 
 [lints]

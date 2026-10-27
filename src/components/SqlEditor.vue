@@ -63,49 +63,10 @@ function run(): void {
 defineExpose({ run });
 </script>
 <template>
-  <div class="editor-shell">
-    <div ref="host" class="editor" aria-label="SQL editor"></div>
-    <button type="button" class="run-button" @click="run">
-      Run <kbd>Ctrl↵</kbd>
+  <div class="relative overflow-hidden rounded-xl border border-white/10 bg-[#0b0e13] shadow-inner shadow-black/20">
+    <div ref="host" class="min-h-[260px] text-left" aria-label="SQL editor"></div>
+    <button type="button" class="absolute bottom-3 right-3 rounded-lg bg-[#cfed66] px-3 py-2 text-xs font-semibold text-[#182010] shadow-lg shadow-[#cfed66]/10 transition hover:bg-[#d9f57c]" @click="run">
+      Run <kbd class="ml-1 text-[#52612a]">⌘↵</kbd>
     </button>
   </div>
 </template>
-<style scoped>
-.editor-shell {
-  position: relative;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--surface);
-}
-.editor {
-  min-height: 130px;
-  text-align: left;
-}
-.editor :deep(.cm-editor) {
-  height: 160px;
-  font:
-    13px/1.55 ui-monospace,
-    SFMono-Regular,
-    monospace;
-}
-.editor :deep(.cm-scroller) {
-  overflow: auto;
-}
-.run-button {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  padding: 6px 9px;
-  border: 1px solid #71863b;
-  border-radius: 5px;
-  background: #cfed66;
-  color: #182010;
-  font-size: 11px;
-  font-weight: 700;
-}
-kbd {
-  font: inherit;
-  opacity: 0.7;
-}
-</style>

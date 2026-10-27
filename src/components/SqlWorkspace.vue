@@ -207,15 +207,15 @@ function exportError(cause: unknown): string {
 </script>
 
 <template>
-  <section class="sql-workspace">
-    <header class="workspace-heading">
+  <section class="grid gap-4">
+    <header class="flex items-end justify-between gap-4">
       <div>
-        <p class="eyebrow">SQL query</p>
-        <h2>Query workspace</h2>
+        <p class="text-[10px] font-semibold uppercase tracking-widest text-[#cfed66]">SQL query</p>
+        <h2 class="mt-1 text-xl font-semibold tracking-tight text-white">Query workspace</h2>
       </div>
       <button
         type="button"
-        class="secondary"
+        class="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white"
         :disabled="busy"
         @click="requestRunAll"
       >
@@ -227,23 +227,23 @@ function exportError(cause: unknown): string {
       @update:model-value="emit('update:modelValue', $event)"
       @run="run"
     />
-    <p v-if="error" class="error-message" role="alert">{{ error }}</p>
-    <p v-if="running || status" role="status" class="status-message">
+    <p v-if="error" class="rounded-lg border border-rose-400/20 bg-rose-400/5 px-3 py-2 text-xs text-rose-300" role="alert">{{ error }}</p>
+    <p v-if="running || status" role="status" class="text-xs text-slate-500">
       {{ status }}
     </p>
-    <div v-if="result" class="result-status">
-      <span>{{ result.durationMs }} ms</span>
-      <span v-if="result.affectedRows !== null"
+    <div v-if="result" class="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+      <span class="rounded-md bg-white/5 px-2 py-1">{{ result.durationMs }} ms</span>
+      <span v-if="result.affectedRows !== null" class="rounded-md bg-white/5 px-2 py-1"
         >{{ result.affectedRows }} affected</span
       >
-      <span v-if="result.truncated" class="warning"
+      <span v-if="result.truncated" class="rounded-md bg-amber-400/10 px-2 py-1 text-amber-300"
         >Showing first 100 rows; result was truncated.</span
       >
     </div>
-    <div v-if="result?.columns.length" class="export-actions" aria-label="Export displayed query result">
-      <span>Export displayed rows</span>
-      <button type="button" class="secondary" :disabled="busy" @click="exportResult('json')">Export JSON</button>
-      <button type="button" class="secondary" :disabled="busy" @click="exportResult('csv')">Export CSV</button>
+    <div v-if="result?.columns.length" class="flex flex-wrap items-center gap-2" aria-label="Export displayed query result">
+      <span class="mr-1 text-[11px] text-slate-600">Export displayed rows</span>
+      <button type="button" class="rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] text-slate-400 hover:bg-white/5 hover:text-white" :disabled="busy" @click="exportResult('json')">Export JSON</button>
+      <button type="button" class="rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] text-slate-400 hover:bg-white/5 hover:text-white" :disabled="busy" @click="exportResult('csv')">Export CSV</button>
     </div>
     <ResultGrid
       v-if="result"

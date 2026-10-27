@@ -125,13 +125,16 @@ async function exportDump(): Promise<void> {
 </script>
 
 <template>
-  <section class="database-tools" aria-labelledby="database-tools-heading">
-    <p class="eyebrow">Database tools</p><h2 id="database-tools-heading">Import &amp; export</h2>
-    <button type="button" :disabled="busy" @click="requestSqlImport">Import SQL dump</button>
-    <button type="button" :disabled="busy" @click="createSqliteCopy">Create SQLite copy</button>
-    <button type="button" :disabled="busy" @click="exportDump">Export SQL dump</button>
-    <p class="tool-hint">A SQLite copy is validated and consistent; it does not merge into this database or alter its source. Existing destinations are rejected.</p>
-    <p v-if="error" class="error-message" role="alert">{{ error }}</p><p v-if="status" class="status-message" role="status">{{ status }}</p>
+  <section class="mt-8 border-t border-white/8 pt-5" aria-labelledby="database-tools-heading">
+    <p class="px-2 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Database tools</p>
+    <h2 id="database-tools-heading" class="mb-2 mt-1 px-2 text-xs font-semibold text-slate-300">Import &amp; export</h2>
+    <div class="grid gap-1">
+      <button type="button" class="rounded-lg px-2 py-2 text-left text-xs text-slate-400 transition hover:bg-white/5 hover:text-slate-100 disabled:hover:bg-transparent" :disabled="busy" @click="requestSqlImport">Import SQL dump</button>
+      <button type="button" class="rounded-lg px-2 py-2 text-left text-xs text-slate-400 transition hover:bg-white/5 hover:text-slate-100 disabled:hover:bg-transparent" :disabled="busy" @click="createSqliteCopy">Create SQLite copy</button>
+      <button type="button" class="rounded-lg px-2 py-2 text-left text-xs text-slate-400 transition hover:bg-white/5 hover:text-slate-100 disabled:hover:bg-transparent" :disabled="busy" @click="exportDump">Export SQL dump</button>
+    </div>
+    <p class="mt-2 px-2 text-[10px] leading-4 text-slate-600">Copies are validated and never overwrite existing files.</p>
+    <p v-if="error" class="mt-2 rounded-lg border border-rose-400/20 bg-rose-400/5 px-2 py-2 text-[11px] text-rose-300" role="alert">{{ error }}</p><p v-if="status" class="mt-2 px-2 text-[11px] text-emerald-300" role="status">{{ status }}</p>
     <ConfirmDialog :open="confirmSqlImport" title="Import SQL dump?" message="This can alter schema and data. The import is atomic: it either completes or rolls back." confirm-label="Import SQL dump" @cancel="confirmSqlImport = false" @confirm="importSql" />
   </section>
 </template>

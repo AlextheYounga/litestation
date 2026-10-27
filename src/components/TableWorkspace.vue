@@ -233,18 +233,18 @@ function exportError(cause: unknown): string {
 </script>
 
 <template>
-  <section class="table-workspace">
-    <header class="workspace-heading">
+  <section class="grid gap-4">
+    <header class="flex items-end justify-between gap-4">
       <div>
-        <p class="eyebrow">Table browser</p>
-        <h2>{{ tableName }}</h2>
-        <p v-if="page" class="metadata">
+        <p class="text-[10px] font-semibold uppercase tracking-widest text-[#cfed66]">Table browser</p>
+        <h2 class="mt-1 text-xl font-semibold tracking-tight text-white">{{ tableName }}</h2>
+        <p v-if="page" class="mt-1 text-xs text-slate-500">
           {{ page.metadata.identityKind }} identity ·
           {{ page.metadata.columns.length }} columns
         </p>
       </div>
       <button
-        class="primary-button compact"
+        class="rounded-lg bg-[#cfed66] px-3 py-2 text-xs font-semibold text-[#182010] shadow-lg shadow-[#cfed66]/10 transition hover:bg-[#d9f57c] disabled:hover:bg-[#cfed66]"
         :disabled="!canMutate || busy"
         :title="mutationReason ?? undefined"
         type="button"
@@ -253,17 +253,17 @@ function exportError(cause: unknown): string {
         Insert row
       </button>
     </header>
-    <p v-if="mutationReason" class="hint">
+    <p v-if="mutationReason" class="rounded-lg border border-amber-400/15 bg-amber-400/5 px-3 py-2 text-xs text-amber-300">
       Editing unavailable: {{ mutationReason }}
     </p>
-    <p v-if="error" class="error-message" role="alert">{{ error }}</p>
-    <p v-if="status" class="status-message" role="status">{{ status }}</p>
-    <p v-if="loading" class="status-message" role="status">Loading rows…</p>
+    <p v-if="error" class="rounded-lg border border-rose-400/20 bg-rose-400/5 px-3 py-2 text-xs text-rose-300" role="alert">{{ error }}</p>
+    <p v-if="status" class="text-xs text-emerald-300" role="status">{{ status }}</p>
+    <p v-if="loading" class="text-xs text-slate-500" role="status">Loading rows…</p>
     <template v-if="page">
-      <div class="export-actions" aria-label="Export displayed table page">
-        <span>Export page ({{ page.rows.length }} displayed rows)</span>
-        <button type="button" :disabled="busy" @click="exportPage('json')">Export JSON</button>
-        <button type="button" :disabled="busy" @click="exportPage('csv')">Export CSV</button>
+      <div class="flex flex-wrap items-center gap-2" aria-label="Export displayed table page">
+        <span class="mr-1 text-[11px] text-slate-600">{{ page.rows.length }} displayed rows</span>
+        <button type="button" class="rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] text-slate-400 hover:bg-white/5 hover:text-white" :disabled="busy" @click="exportPage('json')">Export JSON</button>
+        <button type="button" class="rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] text-slate-400 hover:bg-white/5 hover:text-white" :disabled="busy" @click="exportPage('csv')">Export CSV</button>
       </div>
       <div class="table-grid">
         <ResultGrid
@@ -281,9 +281,8 @@ function exportError(cause: unknown): string {
           </div>
         </aside>
       </div>
-      <nav class="pagination" aria-label="Table pages">
-        <button
-          :disabled="busy || page.offset === 0"
+      <nav class="flex items-center justify-between text-xs text-slate-500" aria-label="Table pages">
+        <button class="rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] hover:bg-white/5 hover:text-white" :disabled="busy || page.offset === 0"
           @click="load(Math.max(0, page.offset - page.limit))"
         >
           Previous
@@ -291,8 +290,7 @@ function exportError(cause: unknown): string {
         <span
           >Rows {{ page.offset + 1 }}–{{ page.offset + page.rows.length }}</span
         >
-        <button
-          :disabled="busy || !page.hasMore"
+        <button class="rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] hover:bg-white/5 hover:text-white" :disabled="busy || !page.hasMore"
           @click="load(page.offset + page.limit)"
         >
           Next
