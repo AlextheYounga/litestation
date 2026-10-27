@@ -61,8 +61,8 @@ onBeforeUnmount(() => {
   emit("busy-change", false);
 });
 
-async function run(selection: string, cursor: number): Promise<void> {
-  const text = selection || statementAtCursor(props.modelValue, cursor);
+async function run(selection: string, cursor: number, source = props.modelValue): Promise<void> {
+  const text = selection || statementAtCursor(source, cursor);
   if (!text?.trim()) {
     error.value = "Place the cursor in a SQL statement or select SQL to run.";
     return;
@@ -277,35 +277,5 @@ function exportError(cause: unknown): string {
 </template>
 
 <style scoped>
-.sql-workspace {
-  display: grid;
-  gap: 12px;
-}
-.workspace-heading {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-}
-.workspace-heading h2 {
-  margin: 0;
-  font-size: 19px;
-}
-.secondary {
-  padding: 7px 10px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  background: transparent;
-  color: inherit;
-  font-size: 12px;
-}
-.result-status {
-  display: flex;
-  gap: 14px;
-  color: var(--muted);
-  font-size: 11px;
-}
-.warning {
-  color: #e8bc70;
-}
-.export-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; color: var(--muted); font-size: 11px; }
+/* Keep the SFC style module stable during Vite HMR; styling uses Tailwind. */
 </style>

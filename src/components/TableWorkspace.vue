@@ -1,8 +1,17 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, defineAsyncComponent, onBeforeUnmount, ref, watch } from "vue";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from "@lucide/vue";
 import ConfirmDialog from "./ConfirmDialog.vue";
-import ResultGrid from "./ResultGrid.vue";
 import RowEditor from "./RowEditor.vue";
+import TableIndexes from "./TableIndexes.vue";
 import {
   browseTable,
   chooseExportDestination,
@@ -18,13 +27,17 @@ import type {
   ColumnValue,
   MutationResult,
   ExportFormat,
+  SchemaItem,
 } from "../types/database";
 import { displayValue, sameValue } from "../utils/sqliteValue";
 import { TableRequestGuard } from "../utils/tableRequest";
 
+const DatabaseGrid = defineAsyncComponent(() => import("./DatabaseGrid.vue"));
+
 const props = defineProps<{
   connectionId: number;
   tableName: string;
+  indexes: SchemaItem[];
 }>();
 const emit = defineEmits<{ "busy-change": [busy: boolean] }>();
 
@@ -38,6 +51,8 @@ const status = ref("");
 const editing = ref<BrowseRow | null>(null);
 const inserting = ref(false);
 const deleting = ref<BrowseRow | null>(null);
+const selectedRows = ref<BrowseRow[]>([]);
+const activeTab = ref<"data" | "indexes">("data");
 const requests = new TableRequestGuard();
 let active = true;
 
@@ -45,6 +60,13 @@ const busy = computed(() => loading.value || mutating.value || exporting.value);
 const canMutate = computed(() => Boolean(page.value?.metadata.editable));
 const mutationReason = computed(() => page.value?.metadata.nonEditableReason);
 const tableKey = computed(() => `${props.connectionId}:${props.tableName}`);
+const tableIndexCount = computed(() =>
+  props.indexes.filter((index) => index.tableName === props.tableName).length,
+);
+const selectedEditableRow = computed(() => {
+  if (selectedRows.value.length !== 1) return null;
+  return selectedRows.value[0].identity ? selectedRows.value[0] : null;
+});
 const editorKey = computed(() =>
   editing.value
     ? JSON.stringify({
@@ -61,6 +83,7 @@ watch(
     editing.value = null;
     inserting.value = false;
     deleting.value = null;
+    selectedRows.value = [];
     void load(0);
   },
   { immediate: true },
@@ -84,7 +107,10 @@ async function load(offset: number): Promise<void> {
 
   try {
     const response = await browseTable({ ...requestKey, limit: PAGE_SIZE });
-    if (active && requests.isCurrent(generation)) page.value = response;
+    if (active && requests.isCurrent(generation)) {
+      page.value = response;
+      selectedRows.value = [];
+    }
   } catch (cause) {
     if (active && requests.isCurrent(generation))
       error.value = normalizeBackendError(cause).message;
@@ -224,6 +250,18 @@ function preview(row: BrowseRow): string {
   return row.values.slice(0, 2).map(displayValue).join(", ");
 }
 
+function editSelectedRow(): void {
+  if (selectedEditableRow.value) editing.value = selectedEditableRow.value;
+}
+
+function deleteSelectedRow(): void {
+  if (selectedEditableRow.value) deleting.value = selectedEditableRow.value;
+}
+
+function editDoubleClickedRow(row: BrowseRow): void {
+  if (canMutate.value && row.identity && !busy.value) editing.value = row;
+}
+
 function exportError(cause: unknown): string {
   const backendError = normalizeBackendError(cause);
   return backendError.code === "destination_exists"
@@ -233,26 +271,42 @@ function exportError(cause: unknown): string {
 </script>
 
 <template>
-  <section class="grid gap-4">
-    <header class="flex items-end justify-between gap-4">
+  <section class="flex h-full min-h-0 flex-col gap-3">
+    <header class="flex min-h-14 items-center justify-between gap-4 border-b border-white/8 pb-3">
       <div>
         <p class="text-[10px] font-semibold uppercase tracking-widest text-[#cfed66]">Table browser</p>
-        <h2 class="mt-1 text-xl font-semibold tracking-tight text-white">{{ tableName }}</h2>
-        <p v-if="page" class="mt-1 text-xs text-slate-500">
-          {{ page.metadata.identityKind }} identity ·
-          {{ page.metadata.columns.length }} columns
-        </p>
+        <div class="mt-1 flex items-baseline gap-2">
+          <h2 class="text-lg font-semibold tracking-tight text-white">{{ tableName }}</h2>
+          <span v-if="page" class="text-[11px] text-slate-600">{{ page.metadata.columns.length }} columns</span>
+        </div>
       </div>
-      <button
-        class="rounded-lg bg-[#cfed66] px-3 py-2 text-xs font-semibold text-[#182010] shadow-lg shadow-[#cfed66]/10 transition hover:bg-[#d9f57c] disabled:hover:bg-[#cfed66]"
-        :disabled="!canMutate || busy"
-        :title="mutationReason ?? undefined"
-        type="button"
-        @click="inserting = true"
-      >
-        Insert row
-      </button>
+      <div v-if="activeTab === 'data'" class="flex items-center gap-1.5">
+        <button
+          type="button"
+          class="grid size-8 place-items-center rounded-md border border-white/10 text-slate-400 transition hover:bg-white/5 hover:text-white"
+          :disabled="busy"
+          title="Refresh rows"
+          aria-label="Refresh rows"
+          @click="load(page?.offset ?? 0)"
+        ><RefreshCw :size="14" /></button>
+        <button
+          class="flex h-8 items-center gap-1.5 rounded-md bg-[#cfed66] px-3 text-xs font-semibold text-[#182010] transition hover:bg-[#d9f57c] disabled:hover:bg-[#cfed66]"
+          :disabled="!canMutate || busy"
+          :title="mutationReason ?? 'Insert row'"
+          type="button"
+          @click="inserting = true"
+        >
+          <Plus :size="14" /> Insert row
+        </button>
+      </div>
     </header>
+    <nav class="flex shrink-0 gap-5 border-b border-white/8" aria-label="Table views">
+      <button type="button" class="border-b-2 px-1 pb-2 text-xs font-medium transition" :class="activeTab === 'data' ? 'border-[#cfed66] text-[#cfed66]' : 'border-transparent text-slate-500 hover:text-slate-300'" :aria-current="activeTab === 'data' ? 'page' : undefined" @click="activeTab = 'data'">Data</button>
+      <button type="button" class="border-b-2 px-1 pb-2 text-xs font-medium transition" :class="activeTab === 'indexes' ? 'border-[#cfed66] text-[#cfed66]' : 'border-transparent text-slate-500 hover:text-slate-300'" :aria-current="activeTab === 'indexes' ? 'page' : undefined" @click="activeTab = 'indexes'">
+        Indexes <span class="ml-1 text-[10px] text-slate-600">{{ tableIndexCount }}</span>
+      </button>
+    </nav>
+    <template v-if="activeTab === 'data'">
     <p v-if="mutationReason" class="rounded-lg border border-amber-400/15 bg-amber-400/5 px-3 py-2 text-xs text-amber-300">
       Editing unavailable: {{ mutationReason }}
     </p>
@@ -260,40 +314,48 @@ function exportError(cause: unknown): string {
     <p v-if="status" class="text-xs text-emerald-300" role="status">{{ status }}</p>
     <p v-if="loading" class="text-xs text-slate-500" role="status">Loading rows…</p>
     <template v-if="page">
-      <div class="flex flex-wrap items-center gap-2" aria-label="Export displayed table page">
-        <span class="mr-1 text-[11px] text-slate-600">{{ page.rows.length }} displayed rows</span>
-        <button type="button" class="rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] text-slate-400 hover:bg-white/5 hover:text-white" :disabled="busy" @click="exportPage('json')">Export JSON</button>
-        <button type="button" class="rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] text-slate-400 hover:bg-white/5 hover:text-white" :disabled="busy" @click="exportPage('csv')">Export CSV</button>
+      <div class="flex shrink-0 flex-wrap items-center gap-1.5" aria-label="Table actions">
+        <span class="mr-auto text-[11px] text-slate-600">{{ selectedRows.length ? `${selectedRows.length} selected` : `${page.rows.length} displayed rows` }} · {{ page.metadata.identityKind }} identity</span>
+        <button
+          type="button"
+          class="grid size-7 place-items-center rounded-md border border-white/10 text-slate-500 hover:bg-white/5 hover:text-white"
+          :disabled="!canMutate || !selectedEditableRow || busy"
+          aria-label="Edit selected row"
+          title="Edit selected row"
+          @click="editSelectedRow"
+        ><Pencil :size="13" /></button>
+        <button
+          type="button"
+          class="grid size-7 place-items-center rounded-md border border-white/10 text-slate-600 hover:bg-rose-400/10 hover:text-rose-300"
+          :disabled="!canMutate || !selectedEditableRow || busy"
+          aria-label="Delete selected row"
+          title="Delete selected row"
+          @click="deleteSelectedRow"
+        ><Trash2 :size="13" /></button>
+        <button type="button" class="flex h-7 items-center gap-1.5 rounded-md border border-white/10 px-2.5 text-[11px] text-slate-400 hover:bg-white/5 hover:text-white" :disabled="busy" @click="exportPage('json')"><Download :size="12" /> JSON</button>
+        <button type="button" class="flex h-7 items-center gap-1.5 rounded-md border border-white/10 px-2.5 text-[11px] text-slate-400 hover:bg-white/5 hover:text-white" :disabled="busy" @click="exportPage('csv')"><Download :size="12" /> CSV</button>
       </div>
-      <div class="table-grid">
-        <ResultGrid
-          :columns="page.columns"
-          :rows="page.rows.map((row) => row.values)"
-        />
-        <aside v-if="canMutate" class="row-actions" aria-label="Row actions">
-          <div v-for="(row, index) in page.rows" :key="index">
-            <button :disabled="!row.identity || busy" @click="editing = row">
-              Edit
-            </button>
-            <button :disabled="!row.identity || busy" @click="deleting = row">
-              Delete
-            </button>
-          </div>
-        </aside>
-      </div>
-      <nav class="flex items-center justify-between text-xs text-slate-500" aria-label="Table pages">
-        <button class="rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] hover:bg-white/5 hover:text-white" :disabled="busy || page.offset === 0"
+      <DatabaseGrid
+        :columns="page.columns"
+        :rows="page.rows"
+        :offset="page.offset"
+        :loading="loading"
+        @selection-change="selectedRows = $event"
+        @row-double-click="editDoubleClickedRow"
+      />
+      <nav class="flex shrink-0 items-center justify-between text-xs text-slate-500" aria-label="Table pages">
+        <button class="flex h-7 items-center gap-1 rounded-md border border-white/10 px-2 text-[11px] hover:bg-white/5 hover:text-white" :disabled="busy || page.offset === 0"
           @click="load(Math.max(0, page.offset - page.limit))"
         >
-          Previous
+          <ChevronLeft :size="13" /> Previous
         </button>
         <span
           >Rows {{ page.offset + 1 }}–{{ page.offset + page.rows.length }}</span
         >
-        <button class="rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] hover:bg-white/5 hover:text-white" :disabled="busy || !page.hasMore"
+        <button class="flex h-7 items-center gap-1 rounded-md border border-white/10 px-2 text-[11px] hover:bg-white/5 hover:text-white" :disabled="busy || !page.hasMore"
           @click="load(page.offset + page.limit)"
         >
-          Next
+          Next <ChevronRight :size="13" />
         </button>
       </nav>
       <RowEditor
@@ -317,6 +379,8 @@ function exportError(cause: unknown): string {
         @save="saveEdit"
       />
     </template>
+    </template>
+    <TableIndexes v-else :table-name="tableName" :indexes="indexes" />
     <ConfirmDialog
       :open="Boolean(deleting)"
       title="Delete row?"
@@ -328,61 +392,5 @@ function exportError(cause: unknown): string {
 </template>
 
 <style scoped>
-.table-workspace {
-  display: grid;
-  gap: 11px;
-}
-.workspace-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: end;
-}
-.workspace-heading h2 {
-  margin: 0;
-  font-size: 19px;
-}
-.metadata,
-.hint {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: 11px;
-}
-.compact {
-  width: auto;
-  padding: 8px 10px;
-}
-.table-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 74px;
-  gap: 6px;
-}
-.row-actions {
-  display: grid;
-  grid-template-columns: 1fr;
-  align-content: start;
-  gap: 5px;
-  padding-top: 36px;
-}
-.row-actions div {
-  display: flex;
-  gap: 3px;
-}
-.row-actions button,
-.pagination button {
-  padding: 5px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--surface);
-  color: inherit;
-  font-size: 10px;
-}
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: var(--muted);
-  font-size: 11px;
-}
-.export-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--muted); font-size: 11px; }
-.export-actions button { padding: 5px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: inherit; font-size: 10px; }
+/* Keep the SFC style module stable during Vite HMR; styling uses Tailwind. */
 </style>

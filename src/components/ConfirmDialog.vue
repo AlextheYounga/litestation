@@ -77,25 +77,26 @@ onBeforeUnmount(() => invokingElement?.focus());
 <template>
   <div
     v-if="open"
-    class="backdrop"
+    class="fixed inset-0 z-50 grid place-items-center bg-black/70 p-5 backdrop-blur-sm"
     role="presentation"
     @mousedown.self="cancel"
   >
     <section
       ref="dialog"
-      class="dialog"
+      class="dialog w-full max-w-sm rounded-xl border border-white/10 bg-[#151920] p-5 shadow-2xl shadow-black/60"
       role="alertdialog"
       aria-modal="true"
        :aria-labelledby="titleId"
        :aria-describedby="messageId"
       @keydown="handleKeydown"
     >
-      <h2 :id="titleId">{{ title }}</h2>
-      <p :id="messageId">{{ message }}</p>
-      <div>
-        <button ref="cancelButton" type="button" @click="cancel">Cancel</button>
+      <h2 :id="titleId" class="text-base font-semibold text-white">{{ title }}</h2>
+      <p :id="messageId" class="mt-2 text-xs leading-5 text-slate-400">{{ message }}</p>
+      <div class="mt-5 flex justify-end gap-2">
+        <button ref="cancelButton" type="button" class="rounded-md border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/5" @click="cancel">Cancel</button>
         <button
           type="button"
+          class="rounded-md border border-rose-400/20 bg-rose-500/15 px-3 py-2 text-xs font-medium text-rose-200 hover:bg-rose-500/25"
           :class="{ danger: destructive }"
           @click="emit('confirm')"
         >
@@ -107,46 +108,5 @@ onBeforeUnmount(() => invokingElement?.focus());
 </template>
 
 <style scoped>
-.backdrop {
-  position: fixed;
-  z-index: 3;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background: #0009;
-}
-.dialog {
-  max-width: 390px;
-  padding: 20px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--surface-strong);
-}
-h2 {
-  margin: 0 0 10px;
-  font-size: 17px;
-}
-p {
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
-}
-.dialog div {
-  display: flex;
-  justify-content: end;
-  gap: 8px;
-}
-.dialog button {
-  padding: 7px 10px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  background: var(--surface);
-  color: inherit;
-}
-.dialog .danger {
-  border-color: #9d554c;
-  background: #8a3f38;
-  color: #fff;
-}
+/* Keep the SFC style module stable during Vite HMR; styling uses Tailwind. */
 </style>

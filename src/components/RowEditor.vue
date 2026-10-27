@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
+import { Save, X } from "@lucide/vue";
 import type { ColumnValue, SqlValue, TableColumn } from "../types/database";
 import { defaultKind, parseValue } from "../utils/sqliteValue";
 
@@ -59,96 +60,62 @@ function submit(): void {
 </script>
 
 <template>
-  <form class="row-editor" @submit.prevent="submit">
-    <header>
-      <h3>{{ title }}</h3>
-      <button type="button" class="plain" @click="emit('cancel')">Close</button>
-    </header>
-    <p v-if="insert" class="hint">
-      Unchecked columns are omitted so database defaults can apply.
-    </p>
-    <label v-for="column in columns" :key="column.name" class="field">
-      <span>
-        <input
-          v-if="insert"
-          v-model="fields[column.name].include"
-          type="checkbox"
-        />
-        {{ column.name }} <small>{{ column.declaredType ?? "untyped" }}</small>
-      </span>
-      <div v-if="fields[column.name].include" class="field-controls">
-        <select
-          v-model="fields[column.name].kind"
-          :disabled="primaryKey.includes(column.name) && !insert"
-        >
-          <option value="null">NULL</option>
-          <option value="integer">integer</option>
-          <option value="real">real</option>
-          <option value="text">text</option>
-          <option value="blob">blob (base64)</option>
-        </select>
-        <input
-          v-model="fields[column.name].raw"
-          :disabled="
-            fields[column.name].kind === 'null' ||
-            (primaryKey.includes(column.name) && !insert)
-          "
-          :aria-label="`${column.name} value`"
-        />
+  <form class="fixed inset-y-14 right-0 z-30 flex w-full max-w-md flex-col overflow-hidden border-l border-white/10 bg-[#11151b] shadow-2xl shadow-black/50" @submit.prevent="submit">
+    <header class="flex h-14 shrink-0 items-center justify-between border-b border-white/8 px-4">
+      <div>
+        <p class="text-[10px] font-semibold uppercase tracking-widest text-[#cfed66]">Row details</p>
+        <h3 class="mt-0.5 text-sm font-semibold text-slate-100">{{ title }}</h3>
       </div>
-    </label>
-    <p v-if="error" class="error-message" role="alert">{{ error }}</p>
-    <button class="primary-button" :disabled="busy" type="submit">
-      {{ insert ? "Insert row" : "Save changes" }}
-    </button>
+      <button type="button" class="grid size-8 place-items-center rounded-md text-slate-500 hover:bg-white/5 hover:text-white" aria-label="Close row editor" title="Close" @click="emit('cancel')"><X :size="16" /></button>
+    </header>
+    <div class="flex-1 space-y-4 overflow-y-auto p-4">
+      <p v-if="insert" class="rounded-md border border-white/8 bg-white/[.025] px-3 py-2 text-[11px] leading-5 text-slate-500">
+        Unchecked columns are omitted so database defaults can apply.
+      </p>
+      <label v-for="column in columns" :key="column.name" class="block">
+        <span class="mb-1.5 flex items-center gap-2 text-[11px] font-medium text-slate-300">
+          <input
+            v-if="insert"
+            v-model="fields[column.name].include"
+            class="accent-[#cfed66]"
+            type="checkbox"
+          />
+          <span class="min-w-0 truncate">{{ column.name }}</span>
+          <small class="ml-auto shrink-0 font-mono text-[9px] uppercase text-slate-600">{{ column.declaredType ?? "untyped" }}</small>
+        </span>
+        <div v-if="fields[column.name].include" class="grid grid-cols-[90px_minmax(0,1fr)] gap-1.5">
+          <select
+            v-model="fields[column.name].kind"
+            class="min-w-0 rounded-md border border-white/10 bg-[#0b0e13] px-2 py-2 text-[11px] text-slate-400"
+            :disabled="primaryKey.includes(column.name) && !insert"
+          >
+            <option value="null">NULL</option>
+            <option value="integer">integer</option>
+            <option value="real">real</option>
+            <option value="text">text</option>
+            <option value="blob">blob</option>
+          </select>
+          <input
+            v-model="fields[column.name].raw"
+            class="min-w-0 rounded-md border border-white/10 bg-[#0b0e13] px-2.5 py-2 text-xs text-slate-200 disabled:text-slate-600"
+            :disabled="
+              fields[column.name].kind === 'null' ||
+              (primaryKey.includes(column.name) && !insert)
+            "
+            :aria-label="`${column.name} value`"
+          />
+        </div>
+      </label>
+      <p v-if="error" class="rounded-md border border-rose-400/20 bg-rose-400/5 px-3 py-2 text-xs text-rose-300" role="alert">{{ error }}</p>
+    </div>
+    <footer class="shrink-0 border-t border-white/8 p-3">
+      <button class="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-[#cfed66] text-xs font-semibold text-[#182010] hover:bg-[#d9f57c]" :disabled="busy" type="submit">
+        <Save :size="14" /> {{ insert ? "Insert row" : "Save changes" }}
+      </button>
+    </footer>
   </form>
 </template>
 
 <style scoped>
-.row-editor {
-  display: grid;
-  gap: 9px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-}
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-h3 {
-  margin: 0;
-  font-size: 14px;
-}
-.field {
-  display: grid;
-  gap: 4px;
-  font-size: 12px;
-}
-.field small,
-.hint {
-  color: var(--muted);
-  font-size: 10px;
-}
-.field-controls {
-  display: grid;
-  grid-template-columns: 110px 1fr;
-  gap: 6px;
-}
-.field input,
-.field select {
-  min-width: 0;
-  padding: 6px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--surface-strong);
-  color: inherit;
-}
-.plain {
-  border: 0;
-  background: none;
-  color: var(--muted);
-}
+/* Keep the SFC style module stable during Vite HMR; styling uses Tailwind. */
 </style>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { Bookmark, BookmarkX, Unplug, X } from "@lucide/vue";
 import SchemaBrowser from "./components/SchemaBrowser.vue";
 import DatabaseTools from "./components/DatabaseTools.vue";
 import SqlWorkspace from "./components/SqlWorkspace.vue";
@@ -188,8 +189,8 @@ async function updateSchema(): Promise<void> {
 </script>
 
 <template>
-  <main class="min-h-screen bg-[#090b0f] text-slate-200">
-    <header class="flex h-14 items-center justify-between border-b border-white/8 bg-[#0d1016] px-5 text-xs">
+  <main class="flex h-screen min-h-0 flex-col overflow-hidden bg-[#090b0f] text-slate-200">
+    <header class="flex h-14 shrink-0 items-center justify-between border-b border-white/8 bg-[#0d1016] px-5 text-xs">
       <div class="flex items-center gap-2.5 font-semibold tracking-tight text-slate-100">
         <span class="grid size-6 place-items-center rounded-md bg-[#cfed66] text-[11px] font-black text-[#182010] shadow-lg shadow-[#cfed66]/15" aria-hidden="true">L</span>
         <span>LiteStation</span>
@@ -201,7 +202,7 @@ async function updateSchema(): Promise<void> {
       </div>
       <span class="text-[11px] text-slate-500">SQLite workspace</span>
     </header>
-    <section v-if="!hasConnection" class="mx-auto grid min-h-[calc(100vh-3.5rem)] max-w-5xl items-center gap-12 px-6 py-16 lg:grid-cols-[1fr_400px]">
+    <section v-if="!hasConnection" class="mx-auto grid min-h-0 max-w-5xl flex-1 items-center gap-12 overflow-auto px-6 py-16 lg:grid-cols-[1fr_400px]">
       <div class="max-w-xl">
         <span class="mb-5 inline-flex items-center gap-2 rounded-full border border-[#cfed66]/20 bg-[#cfed66]/8 px-3 py-1.5 text-[11px] font-medium text-[#cfed66]"><span class="size-1.5 rounded-full bg-[#cfed66]"></span>Local-first SQLite</span>
         <h1 class="text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">A focused workspace<br /><span class="text-[#cfed66]">for your databases.</span></h1>
@@ -268,43 +269,9 @@ async function updateSchema(): Promise<void> {
         <p class="text-[10px] text-slate-600">Forget removes LiteStation metadata only. It never deletes database files.</p>
       </section>
     </section>
-    <section v-else class="grid min-h-[calc(100vh-3.5rem)] grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <aside class="border-b border-white/8 bg-[#0d1016] p-4 lg:border-b-0 lg:border-r">
-        <div class="rounded-xl border border-white/8 bg-white/[.025] p-3">
-          <div class="connection-title">
-            <span class="size-2 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]" aria-hidden="true"></span>
-            <div>
-              <p class="text-[10px] uppercase tracking-widest text-emerald-400">Connected</p>
-              <h1 class="mt-1 truncate text-sm font-semibold text-slate-100">{{ connection?.displayName }}</h1>
-            </div>
-          </div>
-          <p class="mt-3 truncate text-[10px] text-slate-500" :title="connection?.path">{{ connection?.path }}</p>
-          <div class="mt-3 flex flex-wrap gap-1.5">
-            <button
-              v-if="activeCatalogEntry?.saved"
-              type="button"
-              class="rounded-md border border-white/10 px-2 py-1 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"
-              :disabled="controlsDisabled"
-              @click="unsaveConnection(activeCatalogEntry)"
-            >Unsave</button>
-            <button
-              v-else
-              type="button"
-              class="rounded-md border border-white/10 px-2 py-1 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"
-              :disabled="controlsDisabled"
-              @click="saveActiveConnection"
-            >Save</button>
-            <button
-              v-if="activeCatalogEntry"
-              type="button"
-              class="rounded-md border border-white/10 px-2 py-1 text-[10px] text-slate-400 hover:bg-white/5 hover:text-white"
-              :disabled="controlsDisabled"
-              @click="forgetConnection(activeCatalogEntry)"
-            >Forget</button>
-            <button class="rounded-md border border-rose-400/15 px-2 py-1 text-[10px] text-rose-300/80 hover:bg-rose-400/10" :disabled="controlsDisabled" @click="closeConnection">Disconnect</button>
-          </div>
-        </div>
-        <nav class="mt-7" aria-label="Workspace views">
+    <section v-else class="grid min-h-0 flex-1 grid-cols-[240px_minmax(0,1fr)] overflow-hidden lg:grid-cols-[260px_minmax(0,1fr)]">
+      <aside class="flex min-h-0 flex-col overflow-hidden border-r border-white/8 bg-[#0d1016] p-3">
+        <nav class="shrink-0" aria-label="Workspace views">
           <p class="mb-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Workspace</p>
           <button
             type="button"
@@ -318,25 +285,21 @@ async function updateSchema(): Promise<void> {
             <span :class="selectedTable === null ? 'text-slate-100' : 'text-slate-400'">SQL editor</span>
           </button>
         </nav>
-        <SchemaBrowser
-          v-if="connection"
-          :schema="connection.schema"
-          :selected-table="selectedTable"
-          :disabled="controlsDisabled"
-          @select-table="selectedTable = $event"
-        />
-        <DatabaseTools
-          v-if="connection"
-          :connection-id="connection.id"
-          @busy-change="toolsBusy = $event"
-          @schema-imported="applySqlImport"
-        />
+        <div class="min-h-0 flex-1 overflow-y-auto">
+          <SchemaBrowser
+            v-if="connection"
+            :schema="connection.schema"
+            :selected-table="selectedTable"
+            :disabled="controlsDisabled"
+            @select-table="selectedTable = $event"
+          />
+        </div>
       </aside>
-      <section class="min-w-0 overflow-auto bg-[#0a0d12] p-5 sm:p-7">
-        <p v-if="persistenceWarning" class="persistence-warning" role="status">
+      <section class="min-h-0 min-w-0 bg-[#0a0d12] p-4 sm:p-5" :class="selectedTable ? 'overflow-hidden' : 'overflow-auto'">
+        <p v-if="persistenceWarning" class="mb-3 rounded-md border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-xs text-amber-300" role="status">
           Connection metadata could not be saved. Database work still works; check local storage permissions.
         </p>
-        <p v-if="errorMessage" class="error-message" role="alert">
+        <p v-if="errorMessage" class="mb-3 rounded-md border border-rose-400/20 bg-rose-400/5 px-3 py-2 text-xs text-rose-300" role="alert">
           {{ errorMessage }}
         </p>
         <TableWorkspace
@@ -344,6 +307,7 @@ async function updateSchema(): Promise<void> {
           :key="`${connection.id}:${selectedTable}`"
           :connection-id="connection.id"
           :table-name="selectedTable"
+          :indexes="connection.schema.indexes"
           @busy-change="workspaceBusy = $event"
         />
         <SqlWorkspace
@@ -356,5 +320,55 @@ async function updateSchema(): Promise<void> {
         />
       </section>
     </section>
+    <footer v-if="connection" class="flex h-10 shrink-0 items-center gap-3 border-t border-white/8 bg-[#0d1016] px-3">
+      <div class="flex min-w-0 items-center gap-2 text-[11px]">
+        <span class="size-1.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" aria-hidden="true"></span>
+        <strong class="shrink-0 font-medium text-slate-300">{{ connection.displayName }}</strong>
+        <span class="hidden max-w-80 truncate text-slate-600 md:block" :title="connection.path">{{ connection.path }}</span>
+      </div>
+      <div class="ml-auto flex items-center gap-1">
+        <DatabaseTools
+          :connection-id="connection.id"
+          @busy-change="toolsBusy = $event"
+          @schema-imported="applySqlImport"
+        />
+        <span class="mx-1 h-4 w-px bg-white/10" aria-hidden="true"></span>
+        <button
+          v-if="activeCatalogEntry?.saved"
+          type="button"
+          class="grid size-7 place-items-center rounded text-slate-500 hover:bg-white/5 hover:text-white"
+          :disabled="controlsDisabled"
+          aria-label="Remove from saved connections"
+          title="Remove from saved connections"
+          @click="unsaveConnection(activeCatalogEntry)"
+        ><BookmarkX :size="14" /></button>
+        <button
+          v-else
+          type="button"
+          class="grid size-7 place-items-center rounded text-slate-500 hover:bg-white/5 hover:text-white"
+          :disabled="controlsDisabled"
+          aria-label="Save connection"
+          title="Save connection"
+          @click="saveActiveConnection"
+        ><Bookmark :size="14" /></button>
+        <button
+          v-if="activeCatalogEntry"
+          type="button"
+          class="grid size-7 place-items-center rounded text-slate-600 hover:bg-white/5 hover:text-rose-300"
+          :disabled="controlsDisabled"
+          aria-label="Forget connection metadata"
+          title="Forget connection metadata"
+          @click="forgetConnection(activeCatalogEntry)"
+        ><X :size="14" /></button>
+        <button
+          type="button"
+          class="grid size-7 place-items-center rounded text-slate-500 hover:bg-rose-400/10 hover:text-rose-300"
+          :disabled="controlsDisabled"
+          aria-label="Disconnect"
+          title="Disconnect"
+          @click="closeConnection"
+        ><Unplug :size="14" /></button>
+      </div>
+    </footer>
   </main>
 </template>

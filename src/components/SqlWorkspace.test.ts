@@ -25,6 +25,28 @@ describe("SqlWorkspace", () => {
     wrapper.unmount();
   });
 
+  it("runs the editor's current document before its v-model update is flushed", async () => {
+    services.executeSql.mockClear();
+    const wrapper = mount(SqlWorkspace, {
+      props: { connectionId: 1, modelValue: "" },
+    });
+
+    await wrapper.findComponent({ name: "SqlEditor" }).vm.$emit(
+      "run",
+      "",
+      8,
+      "SELECT 1;",
+    );
+
+    await vi.waitFor(() => expect(services.executeSql).toHaveBeenCalledWith({
+      connectionId: 1,
+      sql: "SELECT 1;",
+      maxRows: 100,
+    }));
+    expect(wrapper.text()).not.toContain("Place the cursor in a SQL statement");
+    wrapper.unmount();
+  });
+
   it("exports exactly the displayed bounded columns and rows", async () => {
     const wrapper = mount(SqlWorkspace, { props: { connectionId: 1, modelValue: "SELECT name FROM users;" } });
     await wrapper.findComponent({ name: "SqlEditor" }).vm.$emit("run", "", 0);

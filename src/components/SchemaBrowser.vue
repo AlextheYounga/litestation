@@ -12,7 +12,6 @@ const emit = defineEmits<{ selectTable: [name: string] }>();
 const groups: Array<{ key: keyof DatabaseSchema; label: string }> = [
   { key: "tables", label: "Tables" },
   { key: "views", label: "Views" },
-  { key: "indexes", label: "Indexes" },
   { key: "triggers", label: "Triggers" },
 ];
 

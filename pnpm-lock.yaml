@@ -26,6 +26,12 @@ importers:
       '@tauri-apps/plugin-dialog':
         specifier: ^2
         version: 2.8.3
+      ag-grid-community:
+        specifier: ^36.2.0
+        version: 36.2.0
+      ag-grid-vue3:
+        specifier: ^36.2.0
+        version: 36.2.0(vue@3.5.44(typescript@5.6.3))
       vue:
         specifier: ^3.5.13
         version: 3.5.44(typescript@5.6.3)
@@ -747,6 +753,20 @@ packages:
   abbrev@5.0.0:
     resolution: {integrity: sha512-/XrFJgzQQQHpti1raDJC6m4ws6aNktmjBlhk8Fdlk7LwCEuDoieEJJY9OFHjfiFJFFRM2tK+Ky/IsfbbmlMu1w==}
     engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
+
+  ag-charts-types@14.2.0:
+    resolution: {integrity: sha512-4pDV6/4zbzPN7t607Gr1o6DO9RhmPafQGr+hIpTJBaerbaMoC+WOO3v/wkxFbvCNrHKOexEKSfNTH7PaAR4UzA==}
+
+  ag-grid-community@36.2.0:
+    resolution: {integrity: sha512-tK0Toj7t0fV/OMLPnDc0xlYKAqDbnCT3iJodYSn2TJ541caU8jPdYwWhMdW+AP2+pUNwFiJVgc04eJNfvBPsWw==}
+
+  ag-grid-vue3@36.2.0:
+    resolution: {integrity: sha512-B6P5QHJGxY5g2LjHINAI904x1oMYb/VRlLWgmVylwEov0OicpowHSIxld28vgVkWkHGsdgqnbE4iDHQpVt4zPw==}
+    peerDependencies:
+      vue: ^3.5.32
+
+  ag-stack@36.2.0:
+    resolution: {integrity: sha512-f3XT2htFs9dUPcHni2z9ak69QNta5ODEpooHuuNvbjN98JkokpEqRQ9YLQHQJFdCcgi9Ybs/j3zkkvmNRamIPg==}
 
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
@@ -1866,6 +1886,20 @@ snapshots:
       '@vue/server-renderer': 3.5.44
 
   abbrev@5.0.0: {}
+
+  ag-charts-types@14.2.0: {}
+
+  ag-grid-community@36.2.0:
+    dependencies:
+      ag-charts-types: 14.2.0
+      ag-stack: 36.2.0
+
+  ag-grid-vue3@36.2.0(vue@3.5.44(typescript@5.6.3)):
+    dependencies:
+      ag-grid-community: 36.2.0
+      vue: 3.5.44(typescript@5.6.3)
+
+  ag-stack@36.2.0: {}
 
   agent-base@7.1.4: {}
 

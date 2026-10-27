@@ -6,7 +6,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 const props = defineProps<{ modelValue: string }>();
 const emit = defineEmits<{
   "update:modelValue": [value: string];
-  run: [selection: string, cursor: number];
+  run: [selection: string, cursor: number, source: string];
 }>();
 const host = ref<HTMLElement>();
 let view: EditorView | undefined;
@@ -28,6 +28,7 @@ onMounted(() => {
                   target.state.selection.main.to,
                 ),
                 target.state.selection.main.head,
+                target.state.doc.toString(),
               );
               return true;
             },
@@ -58,6 +59,7 @@ function run(): void {
     "run",
     view.state.sliceDoc(selection.from, selection.to),
     selection.head,
+    view.state.doc.toString(),
   );
 }
 defineExpose({ run });
@@ -70,3 +72,7 @@ defineExpose({ run });
     </button>
   </div>
 </template>
+
+<style scoped>
+/* Keep the SFC style module stable during Vite HMR; styling uses Tailwind. */
+</style>
