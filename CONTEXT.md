@@ -29,18 +29,17 @@ The interface should feel focused and lightweight, exposing advanced functionali
 
 ## Current Project State
 
-The first local SQLite vertical slice is implemented:
+The v1 local SQLite MVP is implemented:
 
-- Tauri 2 desktop shell with a Rust backend and Vue 3 frontend using TypeScript.
-- Native file dialog for selecting an existing local SQLite file.
-- Read-only and read-write opening modes; opening a missing path does not create a file.
-- Rust-side schema introspection, grouped into tables, views, indexes, and triggers.
-- Vue schema browser showing the grouped objects and the active connection's path and mode.
-- Retained backend connections with an explicit close operation.
-- Structured backend errors for invalid paths and malformed databases.
-- Automated Rust backend coverage for schema ordering, malformed databases, read-only behavior, and read-write behavior.
+- Tauri 2 desktop shell with a Rust backend and Vue 3/TypeScript frontend.
+- Native file dialogs, local read-only and read-write connections, grouped schema browsing, and explicit close.
+- SQL editing and execution for selected SQL, the statement at the cursor, and confirmed sequential run-all (non-atomic), with bounded results.
+- Bounded table browsing plus guarded insert, update, and delete operations.
+- Atomic SQL-dump import and validated SQLite-file copy import; the latter does not merge into or modify the open database.
+- JSON/CSV exports of displayed results and SQL-dump export; output files do not overwrite existing destinations.
+- Saved and recent local connection metadata, light/dark themes, structured errors, and automated frontend/Rust coverage.
 
-SQL query execution, data editing, import/export, saved connections, and SSH connections are not implemented yet.
+Post-v1 exclusions include SSH/remote databases, release signing, and broader database engines or hosted services. Cross-platform packaging is configured, but platform-specific manual testing and release validation remain future work.
 
 ## Core Product Principles
 

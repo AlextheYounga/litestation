@@ -3,18 +3,28 @@
 LiteStation is a focused cross-platform desktop application for working with
 local SQLite databases.
 
-## Current capabilities
+## Current capabilities (v1 MVP)
 
-- Open an existing SQLite file through the native file picker.
-- Open it in read-only or read-write mode without creating a missing file.
-- Introspect tables, views, indexes, and triggers in the Rust backend.
-- Display the grouped schema in the Vue interface.
-- Retain an open database connection and close it explicitly.
-- Return structured backend errors for invalid paths and databases.
-- Exercise the database backend with automated Rust tests.
+- Open existing local SQLite files in read-only or read-write mode; missing
+  paths are never created.
+- Browse tables, views, indexes, and triggers, and browse table rows in bounded
+  pages. Writable connections support guarded insert, update, and delete
+  operations; read-only connections cannot mutate data.
+- Edit and execute SQL with CodeMirror. Run the selected SQL, the statement at
+  the cursor, or all statements sequentially. Run-all is explicitly confirmed
+  and non-atomic; earlier successful statements remain applied if a later one
+  fails. The UI requests at most 100 query rows; the backend enforces an
+  absolute 1,000-row limit plus cell, payload, SQL-size, and execution limits.
+- Import SQL dumps atomically into a writable connection (with size and safety
+  checks), or import another SQLite database as a validated, consistent copy.
+  SQLite import does not merge into the open database or alter the source.
+- Export displayed, bounded results as JSON or CSV, and export a database SQL
+  dump. Exports are staged atomically and never overwrite an existing file.
+- Keep saved and recent local connection metadata, with explicit close and
+  forget actions. Database contents and credentials remain local.
+- Light and dark themes, native dialogs, and cross-platform Tauri packaging.
 
-SQL query execution, data editing, import/export, saved connections, and SSH
-connections are not implemented yet.
+SSH connections are planned, but are not part of v1.
 
 ## Stack
 
@@ -25,8 +35,8 @@ connections are not implemented yet.
 
 ## Prerequisites
 
-Install a current Rust toolchain, Node.js with pnpm, and the system
-dependencies described by the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
+Install a current Rust toolchain, Node.js with pnpm, and the system packages
+described by the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
 
 ## Development
 
@@ -46,6 +56,18 @@ Run the Rust test suite:
 ```sh
 cargo test --workspace
 ```
+
+Run the frontend tests, format and lint Rust, and build the Tauri application:
+
+```sh
+pnpm test
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+pnpm tauri build --debug --no-bundle
+```
+
+`pnpm build` builds the frontend without packaging. Tauri builds use the local
+frontend output and produce debug artifacts when `--debug` is supplied.
 
 Product direction and settled goals are documented in
 [`CONTEXT.md`](CONTEXT.md).
