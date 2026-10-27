@@ -6,16 +6,15 @@ use rusqlite::{types::ValueRef, Connection, OpenFlags, Row};
 
 use crate::error::{BackendError, DATABASE_OPEN_FAILED, SCHEMA_LIMIT_EXCEEDED};
 use crate::limits::{SchemaBudget, MAX_SCHEMA_FIELD_BYTES};
-use crate::model::{DatabaseMode, DatabaseSchema, SchemaItem};
+use crate::model::{DatabaseSchema, SchemaItem};
 
 pub struct OpenedDatabase {
     pub path: PathBuf,
-    pub mode: DatabaseMode,
     pub schema: DatabaseSchema,
     pub connection: Connection,
 }
 
-pub fn open(path: &str, mode: DatabaseMode) -> Result<OpenedDatabase, BackendError> {
+pub fn open(path: &str) -> Result<OpenedDatabase, BackendError> {
     let input_path = Path::new(path);
     let metadata = fs::metadata(input_path)
         .map_err(|error| BackendError::new("path_not_found", format!("Database path cannot be read: {error}")))?;
@@ -26,15 +25,11 @@ pub fn open(path: &str, mode: DatabaseMode) -> Result<OpenedDatabase, BackendErr
     let canonical_path = fs::canonicalize(input_path).map_err(|error| {
         BackendError::new("path_canonicalize_failed", format!("Database path cannot be resolved: {error}"))
     })?;
-    let flags = match mode {
-        DatabaseMode::ReadOnly => OpenFlags::SQLITE_OPEN_READ_ONLY,
-        DatabaseMode::ReadWrite => OpenFlags::SQLITE_OPEN_READ_WRITE,
-    };
-    let connection = Connection::open_with_flags(&canonical_path, flags)
+    let connection = Connection::open_with_flags(&canonical_path, OpenFlags::SQLITE_OPEN_READ_WRITE)
         .map_err(|error| BackendError::database(DATABASE_OPEN_FAILED, &error))?;
     let schema = introspect(&connection)?;
 
-    Ok(OpenedDatabase { path: canonical_path, mode, schema, connection })
+    Ok(OpenedDatabase { path: canonical_path, schema, connection })
 }
 
 pub fn introspect(connection: &Connection) -> Result<DatabaseSchema, BackendError> {
@@ -102,7 +97,6 @@ mod tests {
     use rusqlite::Connection;
 
     use super::open;
-    use crate::model::DatabaseMode;
 
     static NEXT_TEST_FILE: AtomicUsize = AtomicUsize::new(0);
 
@@ -125,7 +119,7 @@ mod tests {
         )?;
         drop(connection);
 
-        let opened = open(path.to_string_lossy().as_ref(), DatabaseMode::ReadOnly)?;
+        let opened = open(path.to_string_lossy().as_ref())?;
         assert_eq!(opened.schema.tables.iter().map(|item| item.name.as_str()).collect::<Vec<_>>(), ["alpha", "zeta"]);
         assert_eq!(opened.schema.views.len(), 1);
         assert_eq!(opened.schema.indexes.len(), 1);
@@ -141,44 +135,30 @@ mod tests {
         let path = test_path("malformed");
         remove(&path);
         assert!(fs::write(&path, b"not sqlite").is_ok());
-        let result = open(path.to_string_lossy().as_ref(), DatabaseMode::ReadOnly);
+        let result = open(path.to_string_lossy().as_ref());
         assert!(result.is_err());
         assert_eq!(result.err().map(|error| error.code), Some("schema_query_failed".to_string()));
         remove(&path);
     }
 
     #[test]
-    fn read_only_connection_rejects_writes() -> Result<(), Box<dyn Error>> {
-        let path = test_path("readonly");
-        remove(&path);
-        let connection = Connection::open(&path)?;
-        connection.execute_batch("CREATE TABLE items (id INTEGER)")?;
-        drop(connection);
-        let opened = open(path.to_string_lossy().as_ref(), DatabaseMode::ReadOnly)?;
-        assert!(opened.connection.execute("INSERT INTO items VALUES (1)", []).is_err());
-        drop(opened);
-        remove(&path);
-        Ok(())
-    }
-
-    #[test]
-    fn writable_connection_does_not_create_missing_file() {
+    fn open_does_not_create_missing_file() {
         let path = test_path("missing");
         remove(&path);
-        let result = open(path.to_string_lossy().as_ref(), DatabaseMode::ReadWrite);
+        let result = open(path.to_string_lossy().as_ref());
         assert!(result.is_err());
         assert!(!path.exists());
     }
 
     #[test]
-    fn writable_connection_permits_writes() -> Result<(), Box<dyn Error>> {
-        let path = test_path("readwrite");
+    fn opened_connection_permits_writes() -> Result<(), Box<dyn Error>> {
+        let path = test_path("writable");
         remove(&path);
         let connection = Connection::open(&path)?;
         connection.execute_batch("CREATE TABLE items (id INTEGER)")?;
         drop(connection);
 
-        let opened = open(path.to_string_lossy().as_ref(), DatabaseMode::ReadWrite)?;
+        let opened = open(path.to_string_lossy().as_ref())?;
         opened.connection.execute("INSERT INTO items VALUES (1)", [])?;
         let count: i64 = opened.connection.query_row("SELECT COUNT(*) FROM items", [], |row| row.get(0))?;
         assert_eq!(count, 1);

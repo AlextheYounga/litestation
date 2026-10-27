@@ -8,25 +8,20 @@ use rusqlite::{Connection, Error};
 
 use crate::database::introspect;
 use crate::error::{
-    BackendError, INVALID_SQL, QUERY_FAILED, QUERY_TIMEOUT, READ_ONLY, RESULT_COLUMN_LIMIT_EXCEEDED, SQL_ATTACH,
-    SQL_BEGIN, SQL_BLOCK_COMMENT_END, SQL_BLOCK_COMMENT_START, SQL_COMMIT, SQL_DETACH, SQL_END, SQL_RELEASE,
-    SQL_ROLLBACK, SQL_SAVEPOINT, SQL_TOO_LARGE,
+    BackendError, INVALID_SQL, QUERY_FAILED, QUERY_TIMEOUT, RESULT_COLUMN_LIMIT_EXCEEDED, SQL_ATTACH, SQL_BEGIN,
+    SQL_BLOCK_COMMENT_END, SQL_BLOCK_COMMENT_START, SQL_COMMIT, SQL_DETACH, SQL_END, SQL_RELEASE, SQL_ROLLBACK,
+    SQL_SAVEPOINT, SQL_TOO_LARGE,
 };
 use crate::limits::{PayloadBudget, MAX_RESULT_COLUMNS, MAX_SQL_BYTES};
-use crate::model::{DatabaseMode, ExecuteSqlRequest, ExecuteSqlResponse, SqlValue};
+use crate::model::{ExecuteSqlRequest, ExecuteSqlResponse, SqlValue};
 use crate::value::from_ref;
 
-pub fn execute(
-    connection: &Connection,
-    mode: DatabaseMode,
-    request: &ExecuteSqlRequest,
-) -> Result<ExecuteSqlResponse, BackendError> {
-    execute_with_timeout(connection, mode, request, Duration::from_secs(10))
+pub fn execute(connection: &Connection, request: &ExecuteSqlRequest) -> Result<ExecuteSqlResponse, BackendError> {
+    execute_with_timeout(connection, request, Duration::from_secs(10))
 }
 
 fn execute_with_timeout(
     connection: &Connection,
-    mode: DatabaseMode,
     request: &ExecuteSqlRequest,
     timeout_duration: Duration,
 ) -> Result<ExecuteSqlResponse, BackendError> {
@@ -48,7 +43,7 @@ fn execute_with_timeout(
     let started = Instant::now();
     let schema_before = schema_version(connection)?;
     let timeout = QueryTimeout::start(connection, timeout_duration);
-    let execution = execute_statement(connection, mode, request, &timeout);
+    let execution = execute_statement(connection, request, &timeout);
     drop(timeout);
     let (columns, rows, affected_rows, truncated) = execution?;
     let schema_changed = schema_before != schema_version(connection)?;
@@ -69,14 +64,10 @@ type StatementResult = (Vec<String>, Vec<Vec<SqlValue>>, Option<usize>, bool);
 
 fn execute_statement(
     connection: &Connection,
-    mode: DatabaseMode,
     request: &ExecuteSqlRequest,
     timeout: &QueryTimeout,
 ) -> Result<StatementResult, BackendError> {
     let mut statement = connection.prepare(&request.sql).map_err(|error| prepare_error(&error))?;
-    if mode == DatabaseMode::ReadOnly && !statement.readonly() {
-        return Err(BackendError::new(READ_ONLY, "This connection is read-only"));
-    }
     if statement.column_count() > MAX_RESULT_COLUMNS {
         return Err(BackendError::new(RESULT_COLUMN_LIMIT_EXCEEDED, "Result exceeds 512 columns"));
     }
@@ -90,7 +81,7 @@ fn execute_statement(
         return Ok((columns, Vec::new(), Some(affected), false));
     }
 
-    let readonly = statement.readonly();
+    let is_read_only_statement = statement.readonly();
     let max_rows = usize::try_from(request.max_rows.unwrap_or(200).clamp(1, 1000)).unwrap_or(1000);
     let mut cursor = statement.query([]).map_err(|error| timeout.database_error(&error))?;
     let mut rows = Vec::new();
@@ -99,7 +90,7 @@ fn execute_statement(
     while let Some(row) = cursor.next().map_err(|error| timeout.database_error(&error))? {
         if rows.len() == max_rows || conversion_error.is_some() {
             truncated = true;
-            if readonly {
+            if is_read_only_statement {
                 break;
             }
             continue;
@@ -108,7 +99,7 @@ fn execute_statement(
             Ok(values) => rows.push(values),
             Err(error) => {
                 conversion_error = Some(error);
-                if readonly {
+                if is_read_only_statement {
                     break;
                 }
             }

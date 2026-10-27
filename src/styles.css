@@ -100,16 +100,6 @@ h1 em {
   border-radius: 12px;
   background: var(--surface);
 }
-fieldset {
-  display: grid;
-  gap: 8px;
-  border: 0;
-  padding: 0;
-}
-legend {
-  margin-bottom: 7px;
-  font-size: 12px;
-}
 label {
   font-size: 13px;
 }
@@ -156,11 +146,6 @@ label small {
   border-color: #71863b;
   background: #303a27;
   color: #e5f5ab;
-}
-.warning {
-  margin: 0;
-  color: #e8bc70;
-  font-size: 11px;
 }
 .path {
   overflow-wrap: anywhere;
@@ -270,11 +255,6 @@ label small {
 }
 .connection-sidebar h1 {
   font-size: 15px;
-}
-.mode {
-  margin: 0 0 15px;
-  color: #bbd86c;
-  font-size: 11px;
 }
 .schema-panel {
   margin-top: 30px;

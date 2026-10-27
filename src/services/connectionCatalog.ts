@@ -36,12 +36,11 @@ export class ConnectionCatalog {
   }
 
   recordOpened(connection: DatabaseConnection): ConnectionCatalogState {
-    const entry = this.find(connection.path, connection.mode);
+    const entry = this.find(connection.path);
     const next: ConnectionCatalogEntry = {
-      id: connectionId(connection.path, connection.mode),
+      id: connectionId(connection.path),
       path: connection.path,
       displayName: connection.displayName,
-      mode: connection.mode,
       saved: entry?.saved ?? false,
       lastOpenedAt: this.now().toISOString(),
     };
@@ -50,12 +49,11 @@ export class ConnectionCatalog {
   }
 
   save(connection: DatabaseConnection): ConnectionCatalogState {
-    const entry = this.find(connection.path, connection.mode);
+    const entry = this.find(connection.path);
     const next: ConnectionCatalogEntry = {
-      id: connectionId(connection.path, connection.mode),
+      id: connectionId(connection.path),
       path: connection.path,
       displayName: connection.displayName,
-      mode: connection.mode,
       saved: true,
       lastOpenedAt: entry?.lastOpenedAt ?? this.now().toISOString(),
     };
@@ -76,8 +74,8 @@ export class ConnectionCatalog {
     return this.persist();
   }
 
-  private find(path: string, mode: ConnectionCatalogEntry["mode"]): ConnectionCatalogEntry | undefined {
-    return this.entries.find((entry) => entry.id === connectionId(path, mode));
+  private find(path: string): ConnectionCatalogEntry | undefined {
+    return this.entries.find((entry) => entry.id === connectionId(path));
   }
 
   private persist(): ConnectionCatalogState {
@@ -98,8 +96,8 @@ export class ConnectionCatalog {
   }
 }
 
-export function connectionId(path: string, mode: ConnectionCatalogEntry["mode"]): string {
-  return JSON.stringify([path, mode]);
+export function connectionId(path: string): string {
+  return path;
 }
 
 export function browserCatalogStorage(): CatalogStorage | null {
@@ -115,10 +113,13 @@ function readCatalog(serialized: string): ConnectionCatalogEntry[] {
     const parsed: unknown = JSON.parse(serialized);
     if (!isCatalog(parsed)) return [];
     const entries = parsed.entries.filter(isEntry).map((entry) => ({
-      ...entry,
-      id: connectionId(entry.path, entry.mode),
+      id: connectionId(entry.path),
+      path: entry.path,
+      displayName: entry.displayName,
+      saved: entry.saved,
+      lastOpenedAt: entry.lastOpenedAt,
     }));
-    return limitRecents(uniqueEntries(entries));
+    return limitRecents(mergeEntries(entries));
   } catch {
     return [];
   }
@@ -136,7 +137,6 @@ function isEntry(value: unknown): value is ConnectionCatalogEntry {
   const entry = value as Partial<ConnectionCatalogEntry>;
   return typeof entry.path === "string"
     && typeof entry.displayName === "string"
-    && (entry.mode === "readOnly" || entry.mode === "readWrite")
     && typeof entry.saved === "boolean"
     && typeof entry.lastOpenedAt === "string"
     && isCanonicalTimestamp(entry.lastOpenedAt);
@@ -147,13 +147,18 @@ function isCanonicalTimestamp(value: string): boolean {
   return !Number.isNaN(timestamp.getTime()) && timestamp.toISOString() === value;
 }
 
-function uniqueEntries(entries: ConnectionCatalogEntry[]): ConnectionCatalogEntry[] {
-  const seen = new Set<string>();
-  return entries.filter((entry) => {
-    if (seen.has(entry.id)) return false;
-    seen.add(entry.id);
-    return true;
-  });
+function mergeEntries(entries: ConnectionCatalogEntry[]): ConnectionCatalogEntry[] {
+  const merged = new Map<string, ConnectionCatalogEntry>();
+  for (const entry of entries) {
+    const existing = merged.get(entry.id);
+    if (!existing) {
+      merged.set(entry.id, entry);
+      continue;
+    }
+    const newest = Date.parse(entry.lastOpenedAt) > Date.parse(existing.lastOpenedAt) ? entry : existing;
+    merged.set(entry.id, { ...newest, saved: existing.saved || entry.saved });
+  }
+  return [...merged.values()];
 }
 
 function limitRecents(entries: ConnectionCatalogEntry[]): ConnectionCatalogEntry[] {

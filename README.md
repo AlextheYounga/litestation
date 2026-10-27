@@ -5,11 +5,11 @@ local SQLite databases.
 
 ## Current capabilities (v1 MVP)
 
-- Open existing local SQLite files in read-only or read-write mode; missing
+- Open existing local SQLite files with full read and write access; missing
   paths are never created.
 - Browse tables, views, indexes, and triggers, and browse table rows in bounded
   pages. Writable connections support guarded insert, update, and delete
-  operations; read-only connections cannot mutate data.
+  operations use optimistic conflict checks to avoid overwriting stale rows.
 - Edit and execute SQL with CodeMirror. Run the selected SQL, the statement at
   the cursor, or all statements sequentially. Run-all is explicitly confirmed
   and non-atomic; earlier successful statements remain applied if a later one

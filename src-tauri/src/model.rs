@@ -1,17 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum DatabaseMode {
-    ReadOnly,
-    ReadWrite,
-}
-
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenLocalDatabaseRequest {
     pub path: String,
-    pub mode: DatabaseMode,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -37,7 +29,6 @@ pub struct OpenDatabaseResponse {
     pub id: u64,
     pub path: String,
     pub display_name: String,
-    pub mode: DatabaseMode,
     pub schema: DatabaseSchema,
 }
 

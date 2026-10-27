@@ -11,13 +11,12 @@ import {
   openLocalDatabase,
   refreshSchema,
 } from "./services/database";
-import type { ConnectionMode, DatabaseConnection } from "./types/database";
+import type { DatabaseConnection } from "./types/database";
 import type { ConnectionCatalogEntry } from "./types/connectionCatalog";
 import { browserCatalogStorage, ConnectionCatalog } from "./services/connectionCatalog";
 import { openPath as openDatabasePath } from "./services/openPath";
 import { applyImportedSchema, selectedTableExists } from "./utils/schema";
 
-const mode = ref<ConnectionMode>("readOnly");
 const selectedPath = ref("");
 const connection = ref<DatabaseConnection | null>(null);
 const opening = ref(false);
@@ -44,9 +43,7 @@ const recentConnections = computed(() =>
 const activeCatalogEntry = computed(() => {
   const current = connection.value;
   if (!current) return null;
-  return catalogEntries.value.find(
-    (entry) => entry.path === current.path && entry.mode === current.mode,
-  ) ?? null;
+  return catalogEntries.value.find((entry) => entry.path === current.path) ?? null;
 });
 const controlsDisabled = computed(
   () =>
@@ -80,17 +77,17 @@ async function openDatabase(): Promise<void> {
   // Release the picker guard before handing the selected path to openPath.
   pickerBusy.value = false;
   if (!path) return;
-  await openPath(path, mode.value);
+  await openPath(path);
 }
 
-async function openPath(path: string, connectionMode: ConnectionMode): Promise<void> {
+async function openPath(path: string): Promise<void> {
   if (opening.value || pickerBusy.value || connection.value) return;
   const generation = ++connectionGeneration;
   selectedPath.value = path;
   opening.value = true;
   errorMessage.value = "";
   try {
-    const opened = await openDatabasePath(path, connectionMode, openLocalDatabase, catalog);
+    const opened = await openDatabasePath(path, openLocalDatabase, catalog);
     applyCatalogState(opened.catalogState);
     if (generation === connectionGeneration) connection.value = opened.connection;
   } catch (error) {
@@ -119,10 +116,6 @@ function forgetConnection(entry: ConnectionCatalogEntry): void {
 function applyCatalogState(state: import("./types/connectionCatalog").ConnectionCatalogState): void {
   catalogEntries.value = state.entries;
   persistenceWarning.value = state.persistenceWarning;
-}
-
-function displayMode(connectionMode: ConnectionMode): string {
-  return connectionMode === "readOnly" ? "Read-only" : "Read & write";
 }
 
 function formatOpenedAt(timestamp: string): string {
@@ -196,19 +189,6 @@ async function updateSchema(): Promise<void> {
         <p>Your database stays on this device.</p>
       </div>
       <form class="open-card" @submit.prevent="openDatabase">
-        <fieldset :disabled="opening || pickerBusy">
-          <legend>Connection mode</legend>
-          <label
-            ><input v-model="mode" type="radio" value="readOnly" /> Read-only
-            <small>Safest for exploring</small></label
-          ><label
-            ><input v-model="mode" type="radio" value="readWrite" /> Read &amp;
-            write <small>Changes can be made</small></label
-          >
-        </fieldset>
-        <p v-if="mode === 'readWrite'" class="warning">
-          Writable mode can change or remove data.
-        </p>
         <p class="path">
           {{ selectedPath || "Choose an existing SQLite file" }}
         </p>
@@ -231,8 +211,8 @@ async function updateSchema(): Promise<void> {
           <h2>Saved</h2>
           <ul class="catalog-list">
             <li v-for="entry in savedConnections" :key="entry.id">
-              <button type="button" class="catalog-open" :disabled="controlsDisabled" @click="openPath(entry.path, entry.mode)">
-                <strong>{{ entry.displayName }}</strong><span>{{ entry.path }}</span><small>{{ displayMode(entry.mode) }}</small>
+              <button type="button" class="catalog-open" :disabled="controlsDisabled" @click="openPath(entry.path)">
+                <strong>{{ entry.displayName }}</strong><span>{{ entry.path }}</span>
               </button>
               <button type="button" class="catalog-forget" :disabled="controlsDisabled" :aria-label="`Forget saved connection ${entry.displayName}; database files are not deleted`" @click="forgetConnection(entry)">Forget</button>
             </li>
@@ -242,8 +222,8 @@ async function updateSchema(): Promise<void> {
           <h2>Recent</h2>
           <ul class="catalog-list">
             <li v-for="entry in recentConnections" :key="entry.id">
-              <button type="button" class="catalog-open" :disabled="controlsDisabled" @click="openPath(entry.path, entry.mode)">
-                <strong>{{ entry.displayName }}</strong><span>{{ entry.path }}</span><small>{{ displayMode(entry.mode) }} · {{ formatOpenedAt(entry.lastOpenedAt) }}</small>
+              <button type="button" class="catalog-open" :disabled="controlsDisabled" @click="openPath(entry.path)">
+                <strong>{{ entry.displayName }}</strong><span>{{ entry.path }}</span><small>{{ formatOpenedAt(entry.lastOpenedAt) }}</small>
               </button>
               <button type="button" class="catalog-forget" :disabled="controlsDisabled" :aria-label="`Forget recent connection ${entry.displayName}; database files are not deleted`" @click="forgetConnection(entry)">Forget</button>
             </li>
@@ -256,9 +236,6 @@ async function updateSchema(): Promise<void> {
       <aside class="connection-sidebar">
         <p class="eyebrow">Active connection</p>
         <h1>{{ connection?.displayName }}</h1>
-        <p class="mode">
-          {{ connection?.mode === "readOnly" ? "Read-only" : "Read & write" }}
-        </p>
         <p class="path">{{ connection?.path }}</p>
         <button
           v-if="activeCatalogEntry?.saved"
@@ -316,7 +293,6 @@ async function updateSchema(): Promise<void> {
         <DatabaseTools
           v-if="connection"
           :connection-id="connection.id"
-          :mode="connection.mode"
           @busy-change="toolsBusy = $event"
           @schema-imported="applySqlImport"
         />
@@ -333,7 +309,6 @@ async function updateSchema(): Promise<void> {
           :key="`${connection.id}:${selectedTable}`"
           :connection-id="connection.id"
           :table-name="selectedTable"
-          :read-only="connection.mode === 'readOnly'"
           @busy-change="workspaceBusy = $event"
         />
         <SqlWorkspace

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { onBeforeUnmount, ref, watch } from "vue";
 import ConfirmDialog from "./ConfirmDialog.vue";
 import {
   chooseSqlDump,
@@ -11,9 +11,9 @@ import {
   importSqliteFile,
   normalizeBackendError,
 } from "../services/database";
-import type { ConnectionMode, DatabaseSchema } from "../types/database";
+import type { DatabaseSchema } from "../types/database";
 
-const props = defineProps<{ connectionId: number; mode: ConnectionMode }>();
+const props = defineProps<{ connectionId: number }>();
 const emit = defineEmits<{ "busy-change": [busy: boolean]; "schema-imported": [schema: DatabaseSchema] }>();
 
 const busy = ref(false);
@@ -23,10 +23,8 @@ const error = ref("");
 const status = ref("");
 let generation = 0;
 let active = true;
-const canImportSql = computed(() => props.mode === "readWrite");
-
 watch(
-  () => [props.connectionId, props.mode],
+  () => props.connectionId,
   () => {
     generation += 1;
     sqlSource.value = null;
@@ -54,7 +52,7 @@ function operationError(cause: unknown): string {
 }
 
 async function requestSqlImport(): Promise<void> {
-  if (!canImportSql.value || busy.value) return;
+  if (busy.value) return;
   const token = ++generation;
   const connectionId = props.connectionId;
   error.value = "";
@@ -129,7 +127,7 @@ async function exportDump(): Promise<void> {
 <template>
   <section class="database-tools" aria-labelledby="database-tools-heading">
     <p class="eyebrow">Database tools</p><h2 id="database-tools-heading">Import &amp; export</h2>
-    <button type="button" :disabled="busy || !canImportSql" title="SQL import requires a read & write connection." @click="requestSqlImport">Import SQL dump</button>
+    <button type="button" :disabled="busy" @click="requestSqlImport">Import SQL dump</button>
     <button type="button" :disabled="busy" @click="createSqliteCopy">Create SQLite copy</button>
     <button type="button" :disabled="busy" @click="exportDump">Export SQL dump</button>
     <p class="tool-hint">A SQLite copy is validated and consistent; it does not merge into this database or alter its source. Existing destinations are rejected.</p>

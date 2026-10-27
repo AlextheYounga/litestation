@@ -25,7 +25,6 @@ import { TableRequestGuard } from "../utils/tableRequest";
 const props = defineProps<{
   connectionId: number;
   tableName: string;
-  readOnly: boolean;
 }>();
 const emit = defineEmits<{ "busy-change": [busy: boolean] }>();
 
@@ -43,14 +42,8 @@ const requests = new TableRequestGuard();
 let active = true;
 
 const busy = computed(() => loading.value || mutating.value || exporting.value);
-const canMutate = computed(
-  () => !props.readOnly && Boolean(page.value?.metadata.editable),
-);
-const mutationReason = computed(() =>
-  props.readOnly
-    ? "This connection is read-only."
-    : page.value?.metadata.nonEditableReason,
-);
+const canMutate = computed(() => Boolean(page.value?.metadata.editable));
+const mutationReason = computed(() => page.value?.metadata.nonEditableReason);
 const tableKey = computed(() => `${props.connectionId}:${props.tableName}`);
 const editorKey = computed(() =>
   editing.value

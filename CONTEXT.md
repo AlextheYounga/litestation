@@ -32,7 +32,7 @@ The interface should feel focused and lightweight, exposing advanced functionali
 The v1 local SQLite MVP is implemented:
 
 - Tauri 2 desktop shell with a Rust backend and Vue 3/TypeScript frontend.
-- Native file dialogs, local read-only and read-write connections, grouped schema browsing, and explicit close.
+- Native file dialogs, writable local connections, grouped schema browsing, and explicit close.
 - SQL editing and execution for selected SQL, the statement at the cursor, and confirmed sequential run-all (non-atomic), with bounded results.
 - Bounded table browsing plus guarded insert, update, and delete operations.
 - Atomic SQL-dump import and validated SQLite-file copy import; the latter does not merge into or modify the open database.
@@ -57,7 +57,6 @@ Database contents and connection details must not be sent to an external service
 
 Database tools can cause irreversible data loss. LiteStation should:
 
-- Clearly distinguish read-only and writable connections.
 - Warn before destructive operations.
 - Make transaction state visible.
 - Avoid silently changing database pragmas or journal settings.
@@ -86,12 +85,11 @@ The application should respect platform conventions while maintaining a consiste
 A user can:
 
 1. Select an existing SQLite database file.
-2. Choose whether to open it as read-only or writable.
-3. Browse its schema and data.
-4. Execute SQL.
-5. Edit data when the connection is writable.
-6. Import an SQL dump or another SQLite database file.
-7. Export selected data or a database in JSON, CSV, or SQL format.
+2. Browse its schema and data.
+3. Execute SQL.
+4. Edit data.
+5. Import an SQL dump or another SQLite database file.
+6. Export selected data or a database in JSON, CSV, or SQL format.
 
 Database operations should run in the Rust backend. The frontend must not access database files directly.
 
@@ -104,7 +102,6 @@ A user can save an SSH connection containing:
 - Username.
 - Authentication configuration.
 - Remote SQLite database path.
-- Read-only or writable mode.
 
 SQLite operations must execute on the machine where the database file resides. LiteStation must not treat an SSH-mounted filesystem as if it were a local disk and must not use a copy-edit-upload workflow that could overwrite concurrent changes.
 
@@ -209,18 +206,17 @@ Secrets should use operating-system credential storage when persisted. Non-secre
 The first usable release should include:
 
 1. Opening local SQLite databases.
-2. Read-only and writable connection modes.
-3. Schema and object browsing.
-4. SQL editor with current-statement and selected-query execution.
-5. Paginated or bounded query results.
-6. Table data browsing.
-7. Basic row insertion, editing, and deletion.
-8. Importing SQL dumps and other SQLite database files.
-9. Exporting query results or table data as JSON and CSV.
-10. Exporting databases or selected schema and data as SQL dumps.
-11. Structured errors and destructive-action confirmation.
-12. Saved local connections and recently opened databases.
-13. Linux, macOS, and Windows packaging.
+2. Schema and object browsing.
+3. SQL editor with current-statement and selected-query execution.
+4. Paginated or bounded query results.
+5. Table data browsing.
+6. Basic row insertion, editing, and deletion.
+7. Importing SQL dumps and other SQLite database files.
+8. Exporting query results or table data as JSON and CSV.
+9. Exporting databases or selected schema and data as SQL dumps.
+10. Structured errors and destructive-action confirmation.
+11. Saved local connections and recently opened databases.
+12. Linux, macOS, and Windows packaging.
 
 Remote SSH access is a core product goal, but should follow a stable local database foundation unless its protocol is deliberately selected as part of the first milestone.
 

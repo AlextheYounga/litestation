@@ -5,11 +5,10 @@ use rusqlite::Connection;
 
 use crate::database::OpenedDatabase;
 use crate::error::BackendError;
-use crate::model::{DatabaseMode, OpenDatabaseResponse};
+use crate::model::OpenDatabaseResponse;
 
 struct StoredDatabase {
     connection: Connection,
-    mode: DatabaseMode,
 }
 
 #[derive(Default)]
@@ -35,10 +34,9 @@ impl DatabaseState {
                 .file_name()
                 .filter(|name| !name.is_empty())
                 .map_or_else(|| opened.path.to_string_lossy().into_owned(), |name| name.to_string_lossy().into_owned()),
-            mode: opened.mode,
             schema: opened.schema,
         };
-        let stored = StoredDatabase { connection: opened.connection, mode: opened.mode };
+        let stored = StoredDatabase { connection: opened.connection };
         self.connections.lock().map_err(lock_error)?.insert(id, stored);
         Ok(response)
     }
@@ -56,13 +54,13 @@ impl DatabaseState {
     pub fn with_database<T>(
         &self,
         id: u64,
-        operation: impl FnOnce(&Connection, DatabaseMode) -> Result<T, BackendError>,
+        operation: impl FnOnce(&Connection) -> Result<T, BackendError>,
     ) -> Result<T, BackendError> {
         let connections = self.connections.lock().map_err(lock_error)?;
         let database = connections
             .get(&id)
             .ok_or_else(|| BackendError::new("connection_not_found", "Database connection was not found"))?;
-        operation(&database.connection, database.mode)
+        operation(&database.connection)
     }
 
     #[cfg(test)]
@@ -90,7 +88,6 @@ mod tests {
 
     use super::DatabaseState;
     use crate::database::open;
-    use crate::model::DatabaseMode;
 
     static NEXT_TEST_FILE: AtomicUsize = AtomicUsize::new(1000);
 
@@ -105,7 +102,7 @@ mod tests {
         connection.execute_batch("CREATE TABLE items (id INTEGER)")?;
         drop(connection);
         let state = DatabaseState::default();
-        let response = state.insert(open(path.to_string_lossy().as_ref(), DatabaseMode::ReadWrite)?)?;
+        let response = state.insert(open(path.to_string_lossy().as_ref())?)?;
         assert!(!response.display_name.is_empty());
         state.close(response.id)?;
         assert_eq!(state.close(response.id).err().map(|error| error.code), Some("connection_not_found".to_string()));

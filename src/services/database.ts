@@ -2,7 +2,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import type {
   BackendError,
-  ConnectionMode,
   DatabaseConnection,
   BrowseTableResponse,
   ColumnValue,
@@ -106,12 +105,9 @@ export function deleteRow(request: {
   return invoke("delete_row", { request });
 }
 
-export function openLocalDatabase(
-  path: string,
-  mode: ConnectionMode,
-): Promise<DatabaseConnection> {
+export function openLocalDatabase(path: string): Promise<DatabaseConnection> {
   return invoke<DatabaseConnection>("open_local_database", {
-    request: { path, mode },
+    request: { path },
   });
 }
 

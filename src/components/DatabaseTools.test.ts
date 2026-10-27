@@ -17,15 +17,15 @@ const services = vi.hoisted(() => ({
 vi.mock("../services/database", () => services);
 
 describe("DatabaseTools", () => {
-  it("disables SQL import for read-only connections", () => {
-    const wrapper = mount(DatabaseTools, { props: { connectionId: 1, mode: "readOnly" } });
+  it("enables SQL import for every open connection", () => {
+    const wrapper = mount(DatabaseTools, { props: { connectionId: 1 } });
     expect(wrapper.get("button").text()).toBe("Import SQL dump");
-    expect(wrapper.get("button").attributes("disabled")).toBeDefined();
+    expect(wrapper.get("button").attributes("disabled")).toBeUndefined();
   });
 
   it("treats a cancelled SQL dump picker as a neutral action", async () => {
     services.chooseSqlDump.mockResolvedValueOnce(null);
-    const wrapper = mount(DatabaseTools, { props: { connectionId: 1, mode: "readWrite" } });
+    const wrapper = mount(DatabaseTools, { props: { connectionId: 1 } });
 
     await wrapper.get("button").trigger("click");
 
@@ -36,7 +36,7 @@ describe("DatabaseTools", () => {
   it("does not show a SQL confirmation picked for a previous connection", async () => {
     let resolvePicker!: (path: string | null) => void;
     services.chooseSqlDump.mockReturnValueOnce(new Promise((resolve) => { resolvePicker = resolve; }));
-    const wrapper = mount(DatabaseTools, { props: { connectionId: 1, mode: "readWrite" } });
+    const wrapper = mount(DatabaseTools, { props: { connectionId: 1 } });
 
     await wrapper.get("button").trigger("click");
     await wrapper.setProps({ connectionId: 2 });
@@ -52,7 +52,7 @@ describe("DatabaseTools", () => {
     services.chooseSqliteFile.mockResolvedValueOnce("/source.sqlite");
     services.chooseSqliteCopyDestination.mockResolvedValueOnce("/copy.sqlite");
     services.importSqliteFile.mockReturnValueOnce(new Promise((resolve) => { resolveCopy = resolve; }));
-    const wrapper = mount(DatabaseTools, { props: { connectionId: 1, mode: "readOnly" } });
+    const wrapper = mount(DatabaseTools, { props: { connectionId: 1 } });
 
     await wrapper.findAll("button")[1].trigger("click");
     await wrapper.vm.$nextTick();

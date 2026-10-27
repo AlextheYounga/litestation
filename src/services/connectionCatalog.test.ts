@@ -9,9 +9,9 @@ class MemoryStorage implements CatalogStorage {
   setItem(key: string, value: string): void { this.values.set(key, value); }
 }
 
-function connection(path: string, mode: "readOnly" | "readWrite" = "readOnly"): DatabaseConnection {
+function connection(path: string): DatabaseConnection {
   const segments = path.split(/[\\/]/);
-  return { id: 1, path, displayName: segments[segments.length - 1] ?? path, mode, schema: { tables: [], views: [], indexes: [], triggers: [] } };
+  return { id: 1, path, displayName: segments[segments.length - 1] ?? path, schema: { tables: [], views: [], indexes: [], triggers: [] } };
 }
 
 describe("ConnectionCatalog", () => {
@@ -31,7 +31,6 @@ describe("ConnectionCatalog", () => {
         id: "stale",
         path: "/stale.db",
         displayName: "stale.db",
-        mode: "readOnly",
         saved: false,
         lastOpenedAt: "2025-01-01",
       }],
@@ -45,10 +44,10 @@ describe("ConnectionCatalog", () => {
     storage.setItem(CONNECTION_CATALOG_KEY, JSON.stringify({
       version: 1,
       entries: [
-        { id: "recent-old", path: "/recent-old.db", displayName: "recent-old.db", mode: "readOnly", saved: false, lastOpenedAt: "2025-01-01T00:00:00.000Z" },
-        { id: "saved-new", path: "/saved-new.db", displayName: "saved-new.db", mode: "readOnly", saved: true, lastOpenedAt: "2025-01-03T00:00:00.000Z" },
-        { id: "saved-old", path: "/saved-old.db", displayName: "saved-old.db", mode: "readOnly", saved: true, lastOpenedAt: "2025-01-02T00:00:00.000Z" },
-        { id: "recent-new", path: "/recent-new.db", displayName: "recent-new.db", mode: "readOnly", saved: false, lastOpenedAt: "2025-01-04T00:00:00.000Z" },
+        { id: "recent-old", path: "/recent-old.db", displayName: "recent-old.db", saved: false, lastOpenedAt: "2025-01-01T00:00:00.000Z" },
+        { id: "saved-new", path: "/saved-new.db", displayName: "saved-new.db", saved: true, lastOpenedAt: "2025-01-03T00:00:00.000Z" },
+        { id: "saved-old", path: "/saved-old.db", displayName: "saved-old.db", saved: true, lastOpenedAt: "2025-01-02T00:00:00.000Z" },
+        { id: "recent-new", path: "/recent-new.db", displayName: "recent-new.db", saved: false, lastOpenedAt: "2025-01-04T00:00:00.000Z" },
       ],
     }));
 
@@ -89,11 +88,18 @@ describe("ConnectionCatalog", () => {
     expect(state.entries).toEqual([]);
   });
 
-  it("keeps the same path opened in distinct modes", () => {
-    const catalog = new ConnectionCatalog(new MemoryStorage());
-    catalog.recordOpened(connection("C:\\data\\demo.db", "readOnly"));
-    const state = catalog.recordOpened(connection("C:\\data\\demo.db", "readWrite"));
-    expect(state.entries).toHaveLength(2);
+  it("migrates mode-specific entries into one path-based entry", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(CONNECTION_CATALOG_KEY, JSON.stringify({
+      version: 1,
+      entries: [
+        { id: "old-read", path: "C:\\data\\demo.db", displayName: "demo.db", mode: "readOnly", saved: false, lastOpenedAt: "2025-01-01T00:00:00.000Z" },
+        { id: "old-write", path: "C:\\data\\demo.db", displayName: "demo.db", mode: "readWrite", saved: true, lastOpenedAt: "2025-01-02T00:00:00.000Z" },
+      ],
+    }));
+    const state = new ConnectionCatalog(storage).load();
+    expect(state.entries).toHaveLength(1);
+    expect(state.entries[0]).toMatchObject({ id: "C:\\data\\demo.db", saved: true });
   });
 
   it("keeps database work usable when storage writes fail", () => {
@@ -105,13 +111,13 @@ describe("ConnectionCatalog", () => {
 });
 
 describe("openPath", () => {
-  it("records only successful opens and uses the stored entry mode", async () => {
+  it("records only successful opens", async () => {
     const catalog = new ConnectionCatalog(new MemoryStorage());
-    const openDatabase = async (path: string, mode: "readOnly" | "readWrite") => connection(path, mode);
-    await openPath("/demo.db", "readWrite", openDatabase, catalog);
-    expect(catalog.load().entries[0].mode).toBe("readWrite");
+    const openDatabase = async (path: string) => connection(path);
+    await openPath("/demo.db", openDatabase, catalog);
+    expect(catalog.load().entries[0].path).toBe("/demo.db");
 
-    await expect(openPath("/missing.db", "readOnly", async () => { throw new Error("missing"); }, catalog)).rejects.toThrow("missing");
+    await expect(openPath("/missing.db", async () => { throw new Error("missing"); }, catalog)).rejects.toThrow("missing");
     expect(catalog.load().entries.map((entry) => entry.path)).toEqual(["/demo.db"]);
   });
 });

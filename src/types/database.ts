@@ -1,5 +1,3 @@
-export type ConnectionMode = "readOnly" | "readWrite";
-
 export interface SchemaItem {
   name: string;
   tableName: string;
@@ -17,7 +15,6 @@ export interface DatabaseConnection {
   id: number;
   path: string;
   displayName: string;
-  mode: ConnectionMode;
   schema: DatabaseSchema;
 }
 

@@ -7,7 +7,6 @@ pub const INVALID_IDENTITY: &str = "invalid_identity";
 pub const INVALID_PAGINATION: &str = "invalid_pagination";
 pub const INVALID_SQL: &str = "invalid_sql";
 pub const QUERY_FAILED: &str = "query_failed";
-pub const READ_ONLY: &str = "read_only";
 pub const INVALID_TEXT_ENCODING: &str = "invalid_text_encoding";
 pub const QUERY_TIMEOUT: &str = "query_timeout";
 pub const RESULT_CELL_TOO_LARGE: &str = "result_cell_too_large";

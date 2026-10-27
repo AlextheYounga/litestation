@@ -8,23 +8,16 @@ use rusqlite::{backup::Backup, Connection, OpenFlags, OptionalExtension};
 
 use crate::database::introspect;
 use crate::error::{
-    BackendError, DATABASE_OPEN_FAILED, INVALID_PATH, READ_ONLY, SQL_ATTACH, SQL_BEGIN, SQL_BLOCK_COMMENT_END,
+    BackendError, DATABASE_OPEN_FAILED, INVALID_PATH, SQL_ATTACH, SQL_BEGIN, SQL_BLOCK_COMMENT_END,
     SQL_BLOCK_COMMENT_START, SQL_COMMIT, SQL_DETACH, SQL_END, SQL_PRAGMA, SQL_RELEASE, SQL_ROLLBACK, SQL_SAVEPOINT,
     SQL_VACUUM,
 };
 use crate::file_output::StagedOutput;
-use crate::model::{DatabaseMode, ImportSqlDumpResponse, ImportSqliteFileResponse};
+use crate::model::{ImportSqlDumpResponse, ImportSqliteFileResponse};
 
 const MAX_DUMP_BYTES: u64 = 64 * 1024 * 1024;
 
-pub fn sql_dump(
-    connection: &Connection,
-    mode: DatabaseMode,
-    source_path: &str,
-) -> Result<ImportSqlDumpResponse, BackendError> {
-    if mode == DatabaseMode::ReadOnly {
-        return Err(BackendError::new(READ_ONLY, "This connection is read-only"));
-    }
+pub fn sql_dump(connection: &Connection, source_path: &str) -> Result<ImportSqlDumpResponse, BackendError> {
     let source = regular_file(source_path, "SQL dump")?;
     if source.metadata().map_err(file_error)?.len() > MAX_DUMP_BYTES {
         return Err(BackendError::new("sql_dump_too_large", "SQL dump exceeds the 64 MiB import limit"));
