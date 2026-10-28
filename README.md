@@ -106,6 +106,14 @@ Linux, `.app`/`.dmg` on macOS, an installer on Windows — under
 `src-tauri/target/release/bundle/`. Alongside them sits a plain,
 no-bundle binary you can run however you like.
 
+Open one or more databases directly from the command line. If LiteStation is
+already running, the databases open as tabs in its existing window:
+
+```sh
+litestation path/to/database.sqlite
+litestation first.sqlite second.sqlite
+```
+
 Just want the frontend build, no packaging? Sure:
 
 ```sh
@@ -120,6 +128,11 @@ cargo test --workspace
 
 # Frontend test suite
 pnpm test
+
+# Clean-code checks and TypeScript linting
+pnpm test:cleancode
+pnpm lint:oxlint
+pnpm format:oxfmt
 
 # Keep the Rust honest
 cargo fmt --all -- --check

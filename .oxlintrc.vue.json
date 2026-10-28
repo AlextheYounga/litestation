@@ -1,0 +1,30 @@
+{
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "extends": ["./.oxlintrc.json"],
+    "plugins": ["typescript", "import", "vue"],
+    "rules": {
+        "vue/define-emits-declaration": "error",
+        "vue/define-props-declaration": "error",
+        "vue/define-props-destructuring": "warn",
+        "vue/max-props": "warn",
+        "vue/no-import-compiler-macros": "error",
+        "vue/no-multiple-slot-args": "error",
+        "vue/no-required-prop-with-default": "error",
+        "vue/require-default-export": "off",
+        "vue/require-typed-ref": "warn"
+    },
+    "ignorePatterns": [
+        "vendor",
+        "node_modules",
+        "public",
+        "dist",
+        "build",
+        "bootstrap/ssr",
+        "tailwind.config.js",
+        "vite.config.ts",
+        "resources/js/actions/**",
+        "resources/js/components/ui/*",
+        "resources/js/routes/**",
+        "resources/js/wayfinder/**"
+    ]
+}
