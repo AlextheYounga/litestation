@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import {
   Bookmark,
   BookmarkX,
@@ -24,49 +24,53 @@ import {
   refreshSchema,
 } from "./services/database";
 import type { ConnectionCatalogEntry } from "./types/connectionCatalog";
-import { browserCatalogStorage, ConnectionCatalog } from "./services/connectionCatalog";
+import { ConnectionCatalog, browserCatalogStorage } from "./services/connectionCatalog";
 import { openPath as openDatabasePath } from "./services/openPath";
 import { applyImportedSchema, selectedTableExists } from "./utils/schema";
 import { useDatabaseSessions } from "./composables/useDatabaseSessions";
+import { onDatabasePathsAvailable, takePendingDatabasePaths } from "./services/launch";
 
-const selectedPath = ref("");
-const opening = ref(false);
-const pickerBusy = ref(false);
-const closingConnectionIds = ref(new Set<number>());
-const openErrorMessage = ref("");
-const persistenceWarning = ref(false);
-const catalog = new ConnectionCatalog(browserCatalogStorage());
-const catalogEntries = ref<ConnectionCatalogEntry[]>([]);
-const databaseSessions = useDatabaseSessions();
-const { sessions, activeConnectionId, activeSession } = databaseSessions;
-let openGeneration = 0;
+const selectedPath = ref(""),
+ opening = ref(false),
+ pickerBusy = ref(false),
+ closingConnectionIds = ref(new Set<number>()),
+ openErrorMessage = ref(""),
+ persistenceWarning = ref(false),
+ catalog = new ConnectionCatalog(browserCatalogStorage()),
+ catalogEntries = ref<ConnectionCatalogEntry[]>([]),
+ databaseSessions = useDatabaseSessions(),
+ { sessions, activeConnectionId, activeSession } = databaseSessions;
+let openGeneration = 0,
+ stopLaunchPathListener: (() => void) | null = null,
+ launchPathWork = Promise.resolve(),
+ openPathWork = Promise.resolve();
 
-const connection = computed(() => activeSession.value?.connection ?? null);
-const hasConnection = computed(() => sessions.value.length > 0);
-const selectedTable = computed({
+const connection = computed(() => activeSession.value?.connection ?? null),
+ hasConnection = computed(() => sessions.value.length > 0),
+ selectedTable = computed({
   get: () => activeSession.value?.selectedTable ?? null,
   set: (table: string | null) => {
-    if (activeSession.value) activeSession.value.selectedTable = table;
+    if (activeSession.value) {activeSession.value.selectedTable = table;}
   },
-});
-const sqlSource = computed({
+}),
+ sqlSource = computed({
   get: () => activeSession.value?.sqlSource ?? "",
   set: (sql: string) => {
-    if (activeSession.value) activeSession.value.sqlSource = sql;
+    if (activeSession.value) {activeSession.value.sqlSource = sql;}
   },
-});
-const savedConnections = computed(() =>
+}),
+ savedConnections = computed(() =>
   catalogEntries.value.filter((entry) => entry.saved),
-);
-const recentConnections = computed(() =>
+),
+ recentConnections = computed(() =>
   catalogEntries.value.filter((entry) => !entry.saved),
-);
-const activeCatalogEntry = computed(() => {
+),
+ activeCatalogEntry = computed(() => {
   const current = connection.value;
-  if (!current) return null;
+  if (!current) {return null;}
   return catalogEntries.value.find((entry) => entry.path === current.path) ?? null;
-});
-const controlsDisabled = computed(
+}),
+ controlsDisabled = computed(
   () =>
     opening.value ||
     pickerBusy.value ||
@@ -75,8 +79,8 @@ const controlsDisabled = computed(
     activeSession.value?.toolsBusy ||
     activeSession.value?.schemaRefreshing ||
     false,
-);
-const busyConnectionIds = computed(() => new Set(
+),
+ busyConnectionIds = computed(() => new Set(
   sessions.value
     .filter((session) => session.workspaceBusy || session.toolsBusy || session.schemaRefreshing)
     .map((session) => session.connection.id),
@@ -84,8 +88,30 @@ const busyConnectionIds = computed(() => new Set(
 
 applyCatalogState(catalog.load());
 
+onMounted(async () => {
+  try {
+    stopLaunchPathListener = await onDatabasePathsAvailable(schedulePendingDatabasePaths);
+    schedulePendingDatabasePaths();
+  } catch (error) {
+    openErrorMessage.value = normalizeBackendError(error).message;
+  }
+});
+
+onBeforeUnmount(() => stopLaunchPathListener?.());
+
+function schedulePendingDatabasePaths(): void {
+  launchPathWork = launchPathWork.then(openPendingDatabasePaths).catch((error: unknown) => {
+    openErrorMessage.value = normalizeBackendError(error).message;
+  });
+}
+
+async function openPendingDatabasePaths(): Promise<void> {
+  const paths = await takePendingDatabasePaths();
+  await Promise.all(paths.map((path) => openPath(path)));
+}
+
 async function openDatabase(): Promise<void> {
-  if (opening.value || pickerBusy.value) return;
+  if (opening.value || pickerBusy.value) {return;}
   const pickerGeneration = ++openGeneration;
   pickerBusy.value = true;
   let path: string | null;
@@ -93,7 +119,7 @@ async function openDatabase(): Promise<void> {
     path = await chooseSqliteFile();
   } catch (error) {
     if (pickerGeneration === openGeneration)
-      openErrorMessage.value = normalizeBackendError(error).message;
+      {openErrorMessage.value = normalizeBackendError(error).message;}
     pickerBusy.value = false;
     return;
   }
@@ -103,7 +129,7 @@ async function openDatabase(): Promise<void> {
   }
   // Release the picker guard before handing the selected path to openPath.
   pickerBusy.value = false;
-  if (!path) return;
+  if (!path) {return;}
   await openPath(path);
 }
 
@@ -118,8 +144,14 @@ async function openEnteredPath(): Promise<void> {
   await openPath(path);
 }
 
-async function openPath(path: string): Promise<void> {
-  if (opening.value || pickerBusy.value) return;
+function openPath(path: string): Promise<void> {
+  const request = openPathWork.then(() => openPathNow(path));
+  openPathWork = request.catch(() => undefined);
+  return request;
+}
+
+async function openPathNow(path: string): Promise<void> {
+  await waitForFilePicker();
   const existing = sessions.value.find((session) => session.connection.path === path);
   if (existing) {
     databaseSessions.activate(existing.connection.id);
@@ -137,27 +169,39 @@ async function openPath(path: string): Promise<void> {
       return;
     }
     const result = databaseSessions.add(opened.connection);
-    if (!result.added) await closeDatabase(opened.connection.id);
+    if (!result.added) {await closeDatabase(opened.connection.id);}
   } catch (error) {
     if (generation === openGeneration)
-      openErrorMessage.value = normalizeBackendError(error).message;
+      {openErrorMessage.value = normalizeBackendError(error).message;}
   } finally {
-    if (generation === openGeneration) opening.value = false;
+    if (generation === openGeneration) {opening.value = false;}
   }
 }
 
+function waitForFilePicker(): Promise<void> {
+  if (!pickerBusy.value) {return Promise.resolve();}
+
+  return new Promise((resolve) => {
+    const stop = watch(pickerBusy, (busy) => {
+      if (busy) {return;}
+      stop();
+      resolve();
+    });
+  });
+}
+
 function saveActiveConnection(): void {
-  if (!connection.value || controlsDisabled.value) return;
+  if (!connection.value || controlsDisabled.value) {return;}
   applyCatalogState(catalog.save(connection.value));
 }
 
 function unsaveConnection(entry: ConnectionCatalogEntry): void {
-  if (controlsDisabled.value) return;
+  if (controlsDisabled.value) {return;}
   applyCatalogState(catalog.unsave(entry));
 }
 
 function forgetConnection(entry: ConnectionCatalogEntry): void {
-  if (controlsDisabled.value) return;
+  if (controlsDisabled.value) {return;}
   applyCatalogState(catalog.forget(entry));
 }
 
@@ -168,24 +212,24 @@ function applyCatalogState(state: import("./types/connectionCatalog").Connection
 
 function setWorkspaceBusy(connectionId: number, busy: boolean): void {
   const session = sessions.value.find((candidate) => candidate.connection.id === connectionId);
-  if (session) session.workspaceBusy = busy;
+  if (session) {session.workspaceBusy = busy;}
 }
 
 function setToolsBusy(connectionId: number, busy: boolean): void {
   const session = sessions.value.find((candidate) => candidate.connection.id === connectionId);
-  if (session) session.toolsBusy = busy;
+  if (session) {session.toolsBusy = busy;}
 }
 
 async function closeConnection(connectionId = activeConnectionId.value): Promise<void> {
-  if (connectionId === null || closingConnectionIds.value.has(connectionId)) return;
+  if (connectionId === null || closingConnectionIds.value.has(connectionId)) {return;}
   const session = sessions.value.find((candidate) => candidate.connection.id === connectionId);
-  if (!session || session.workspaceBusy || session.toolsBusy || session.schemaRefreshing) return;
+  if (!session || session.workspaceBusy || session.toolsBusy || session.schemaRefreshing) {return;}
   closingConnectionIds.value = new Set(closingConnectionIds.value).add(connectionId);
   session.errorMessage = "";
   try {
     await closeDatabase(connectionId);
     databaseSessions.remove(connectionId);
-    if (!sessions.value.length) selectedPath.value = "";
+    if (!sessions.value.length) {selectedPath.value = "";}
   } catch (error) {
     session.errorMessage = normalizeBackendError(error).message;
   } finally {
@@ -197,23 +241,23 @@ async function closeConnection(connectionId = activeConnectionId.value): Promise
 
 function applySqlImport(connectionId: number, schema: import("./types/database").DatabaseSchema): void {
   const session = sessions.value.find((candidate) => candidate.connection.id === connectionId);
-  if (!session) return;
+  if (!session) {return;}
   session.connection = applyImportedSchema(session.connection, schema);
-  if (!selectedTableExists(schema, session.selectedTable)) session.selectedTable = null;
+  if (!selectedTableExists(schema, session.selectedTable)) {session.selectedTable = null;}
 }
 
 async function updateSchema(connectionId = activeConnectionId.value): Promise<void> {
-  if (connectionId === null) return;
+  if (connectionId === null) {return;}
   const session = sessions.value.find((candidate) => candidate.connection.id === connectionId);
-  if (!session) return;
+  if (!session) {return;}
   session.schemaRefreshing = true;
   try {
     const schema = await refreshSchema(connectionId);
-    if (sessions.value.includes(session)) session.connection = { ...session.connection, schema };
+    if (sessions.value.includes(session)) {session.connection = { ...session.connection, schema };}
   } catch (error) {
-    if (sessions.value.includes(session)) session.errorMessage = normalizeBackendError(error).message;
+    if (sessions.value.includes(session)) {session.errorMessage = normalizeBackendError(error).message;}
   } finally {
-    if (sessions.value.includes(session)) session.schemaRefreshing = false;
+    if (sessions.value.includes(session)) {session.schemaRefreshing = false;}
   }
 }
 </script>
@@ -298,8 +342,8 @@ async function updateSchema(connectionId = activeConnectionId.value): Promise<vo
         <p v-if="persistenceWarning" class="alert alert-warn mb-3" role="status">
           Connection metadata could not be saved. Database work still works; check local storage permissions.
         </p>
-        <p v-if="activeSession?.errorMessage" class="alert alert-error mb-3" role="alert">
-          {{ activeSession.errorMessage }}
+        <p v-if="openErrorMessage || activeSession?.errorMessage" class="alert alert-error mb-3" role="alert">
+          {{ openErrorMessage || activeSession?.errorMessage }}
         </p>
         <TableWorkspace
           v-if="connection && selectedTable"

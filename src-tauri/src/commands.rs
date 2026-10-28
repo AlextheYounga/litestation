@@ -1,6 +1,7 @@
 use tauri::State;
 
 use crate::error::BackendError;
+use crate::launch::LaunchPathState;
 use crate::model::{
     BrowseTableRequest, BrowseTableResponse, DatabaseSchema, DeleteRowRequest, ExecuteSqlRequest, ExecuteSqlResponse,
     ExportRowsRequest, ExportRowsResponse, ExportSqlDumpRequest, ExportSqlDumpResponse, ImportSqlDumpRequest,
@@ -25,6 +26,12 @@ pub fn open_local_database(
 #[expect(clippy::needless_pass_by_value)]
 pub fn close_database(state: State<'_, DatabaseState>, connection_id: u64) -> Result<(), BackendError> {
     state.close(connection_id)
+}
+
+#[tauri::command]
+#[expect(clippy::needless_pass_by_value)]
+pub fn take_pending_database_paths(state: State<'_, LaunchPathState>) -> Result<Vec<String>, BackendError> {
+    state.take_all()
 }
 
 #[tauri::command(rename_all = "camelCase")]

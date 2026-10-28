@@ -24,6 +24,21 @@
       "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://asset.localhost data:; font-src 'self' data:; object-src 'none'; base-uri 'self'"
     }
   },
+  "plugins": {
+    "cli": {
+      "description": "Open one or more SQLite databases in LiteStation",
+      "args": [
+        {
+          "name": "database",
+          "description": "SQLite database path",
+          "index": 1,
+          "takesValue": true,
+          "multiple": true,
+          "minValues": 1
+        }
+      ]
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
