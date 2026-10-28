@@ -61,7 +61,7 @@ map_unwrap_or = "warn"
 unnecessary_wraps = "warn"
 [package]
 name = "litestation-lints"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 
 [workspace]
