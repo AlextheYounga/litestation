@@ -5,10 +5,13 @@ import {
   BookmarkX,
   Clock,
   Database,
+  Download,
   FolderOpen,
+  Pencil,
   RefreshCw,
   SquareTerminal,
   Star,
+  Table2,
   Unplug,
   X,
 } from "@lucide/vue";
@@ -16,6 +19,7 @@ import SchemaBrowser from "./components/SchemaBrowser.vue";
 import DatabaseTools from "./components/DatabaseTools.vue";
 import SqlWorkspace from "./components/SqlWorkspace.vue";
 import TableWorkspace from "./components/TableWorkspace.vue";
+import WelcomeBackdrop from "./components/WelcomeBackdrop.vue";
 import {
   chooseSqliteFile,
   closeDatabase,
@@ -200,7 +204,8 @@ async function updateSchema(): Promise<void> {
 </script>
 
 <template>
-  <main class="flex h-screen min-h-0 flex-col overflow-hidden bg-[#090b0f] text-slate-200">
+  <main class="relative isolate flex h-screen min-h-0 flex-col overflow-hidden bg-[#090b0f] text-slate-200">
+    <WelcomeBackdrop v-if="!hasConnection" />
     <header class="flex h-14 shrink-0 items-center justify-between border-b border-white/8 bg-surface px-5 text-xs">
       <div class="flex items-center gap-2.5 font-semibold tracking-tight text-slate-100">
         <span class="grid size-6 place-items-center rounded-md bg-accent text-2xs font-black text-accent-ink shadow-lg shadow-accent/15" aria-hidden="true">L</span>
@@ -213,11 +218,16 @@ async function updateSchema(): Promise<void> {
       <span v-else class="chip hidden rounded-full sm:inline-flex">Local · SQLite</span>
     </header>
     <section v-if="!hasConnection" class="relative mx-auto grid min-h-0 max-w-5xl flex-1 items-center gap-12 overflow-auto px-6 py-16 lg:grid-cols-[1fr_400px]">
-      <div class="pointer-events-none absolute left-0 top-1/3 hidden h-96 w-96 -translate-x-24 rounded-full bg-accent/6 blur-3xl lg:block" aria-hidden="true"></div>
       <div class="relative max-w-xl">
         <span class="mb-5 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/8 px-3 py-1.5 text-2xs font-medium text-accent"><span class="size-1.5 rounded-full bg-accent"></span>Local-first SQLite</span>
         <h1 class="text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">A focused workspace<br /><span class="text-accent">for your databases.</span></h1>
         <p class="mt-5 max-w-md text-sm leading-7 text-slate-400">Browse schemas, edit data, run queries, and export results without your database ever leaving this device.</p>
+        <ul class="mt-7 flex flex-wrap gap-2">
+          <li class="chip"><Table2 :size="11" /> Browse schemas</li>
+          <li class="chip"><Pencil :size="11" /> Edit rows</li>
+          <li class="chip"><SquareTerminal :size="11" /> Run SQL</li>
+          <li class="chip"><Download :size="11" /> Export data</li>
+        </ul>
       </div>
       <form class="rounded-2xl border border-white/10 bg-panel p-6 shadow-2xl shadow-black/20" @submit.prevent="openEnteredPath">
         <div class="mb-5 grid size-11 place-items-center rounded-xl border border-accent/15 bg-accent/8 text-accent" aria-hidden="true"><Database :size="20" /></div>

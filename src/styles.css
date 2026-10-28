@@ -139,6 +139,26 @@ button.active {
 .dialog-in { animation: dialog-in 140ms ease-out both; }
 .panel-in { animation: panel-in 180ms ease-out both; }
 
+/* Welcome-screen backdrop layers. */
+.backdrop-grid {
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.03) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 70% 60% at 30% 20%, black 30%, transparent 80%);
+}
+@keyframes backdrop-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes backdrop-drift {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(14px); }
+}
+.backdrop-float { animation: backdrop-float 9s ease-in-out infinite; }
+.backdrop-drift { animation: backdrop-drift 11s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
-  .overlay-in, .dialog-in, .panel-in { animation: none; }
+  .overlay-in, .dialog-in, .panel-in,
+  .backdrop-float, .backdrop-drift { animation: none; }
 }
