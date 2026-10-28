@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 import {
   ClientSideRowModelModule,
+  ColumnAutoSizeModule,
   ModuleRegistry,
   RowSelectionModule,
   TooltipModule,
@@ -18,8 +19,11 @@ import {
 import type { BrowseRow, SqlValue } from "../types/database";
 import { displayValue } from "../utils/sqliteValue";
 
+// ColumnAutoSizeModule powers autoSizeStrategy and api.sizeColumnsToFit;
+// without it columns fall back to their default width and never fill the window.
 ModuleRegistry.registerModules([
   ClientSideRowModelModule,
+  ColumnAutoSizeModule,
   RowSelectionModule,
   TooltipModule,
 ]);
