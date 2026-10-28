@@ -5,7 +5,7 @@ import {
   runAllStatement,
   statementAtCursor,
   statements,
-} from "./sqlStatement";
+} from "../../src/utils/sqlStatement";
 describe("SQL statement scanner", () => {
   it("finds the following statement at a shared boundary and the last at document end", () => {
     const sql = "select 1;select 2";

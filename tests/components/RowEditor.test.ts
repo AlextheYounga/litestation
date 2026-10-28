@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
-import RowEditor from "./RowEditor.vue";
-import type { TableColumn } from "../types/database";
+import RowEditor from "../../src/components/RowEditor.vue";
+import type { TableColumn } from "../../src/types/database";
 
 const columns: TableColumn[] = [
   {

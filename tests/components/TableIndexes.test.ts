@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
-import TableIndexes from "./TableIndexes.vue";
+import TableIndexes from "../../src/components/TableIndexes.vue";
 
 describe("TableIndexes", () => {
   it("shows only indexes belonging to the selected table", () => {

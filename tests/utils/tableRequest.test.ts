@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TableRequestGuard } from "./tableRequest";
+import { TableRequestGuard } from "../../src/utils/tableRequest";
 
 describe("TableRequestGuard", () => {
   it("does not apply a stale mocked browse response after selecting another table", async () => {

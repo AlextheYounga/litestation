@@ -2,8 +2,8 @@
 import { defineComponent } from "vue";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
-import DatabaseGrid from "./DatabaseGrid.vue";
-import type { BrowseRow } from "../types/database";
+import DatabaseGrid from "../../src/components/DatabaseGrid.vue";
+import type { BrowseRow } from "../../src/types/database";
 
 vi.mock("ag-grid-vue3", () => ({
   AgGridVue: defineComponent({

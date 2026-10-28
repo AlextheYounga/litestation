@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
-import SchemaBrowser from "./SchemaBrowser.vue";
+import SchemaBrowser from "../../src/components/SchemaBrowser.vue";
 
 describe("SchemaBrowser", () => {
   it("keeps indexes out of the database-wide object browser", () => {

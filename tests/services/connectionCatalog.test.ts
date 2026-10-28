@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { DatabaseConnection } from "../types/database";
-import { CONNECTION_CATALOG_KEY, ConnectionCatalog, type CatalogStorage } from "./connectionCatalog";
-import { openPath } from "./openPath";
+import type { DatabaseConnection } from "../../src/types/database";
+import { CONNECTION_CATALOG_KEY, ConnectionCatalog, type CatalogStorage } from "../../src/services/connectionCatalog";
+import { openPath } from "../../src/services/openPath";
 
 class MemoryStorage implements CatalogStorage {
   values = new Map<string, string>();

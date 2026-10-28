@@ -2,7 +2,7 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import { defineComponent, h, nextTick } from "vue";
-import ConfirmDialog from "./ConfirmDialog.vue";
+import ConfirmDialog from "../../src/components/ConfirmDialog.vue";
 
 describe("ConfirmDialog", () => {
   it("focuses Cancel, cancels on Escape, and restores invoking focus", async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { displayValue, parseValue, validBase64 } from "./sqliteValue";
+import { displayValue, parseValue, validBase64 } from "../../src/utils/sqliteValue";
 describe("SQLite values", () => {
   it("displays null and preserves large integers", () => {
     expect(displayValue({ kind: "null" })).toBe("NULL");

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
-import SqlWorkspace from "./SqlWorkspace.vue";
+import SqlWorkspace from "../../src/components/SqlWorkspace.vue";
 
 const services = vi.hoisted(() => ({
   chooseExportDestination: vi.fn().mockResolvedValue("/tmp/result.json"),
@@ -10,7 +10,7 @@ const services = vi.hoisted(() => ({
   normalizeBackendError: (error: unknown) => ({ code: "error", message: String(error) }),
 }));
 
-vi.mock("../services/database", () => services);
+vi.mock("../../src/services/database", () => services);
 
 describe("SqlWorkspace", () => {
   it("exposes the editor source through its v-model contract", async () => {

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
-import DatabaseTools from "./DatabaseTools.vue";
+import DatabaseTools from "../../src/components/DatabaseTools.vue";
 
 const services = vi.hoisted(() => ({
   chooseSqlDump: vi.fn(),
@@ -14,7 +14,7 @@ const services = vi.hoisted(() => ({
   normalizeBackendError: (error: unknown) => ({ code: "error", message: String(error) }),
 }));
 
-vi.mock("../services/database", () => services);
+vi.mock("../../src/services/database", () => services);
 
 describe("DatabaseTools", () => {
   it("enables SQL import for every open connection", () => {
