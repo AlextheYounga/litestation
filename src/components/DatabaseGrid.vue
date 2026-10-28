@@ -7,8 +7,10 @@ import {
   RowSelectionModule,
   TooltipModule,
   themeQuartz,
+  type AutoSizeStrategy,
   type ColDef,
   type GetRowIdParams,
+  type GridSizeChangedEvent,
   type RowDoubleClickedEvent,
   type RowSelectionOptions,
   type SelectionChangedEvent,
@@ -44,13 +46,15 @@ const gridTheme = themeQuartz.withParams({
   backgroundColor: "#0d1016",
   borderColor: "#252a33",
   browserColorScheme: "dark",
-  cellFontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
-  cellFontSize: 11,
+  cellFontFamily: "InterVariable, Inter, ui-sans-serif, system-ui, sans-serif",
+  cellFontSize: 12,
   foregroundColor: "#cbd5e1",
   headerBackgroundColor: "#151a23",
+  headerFontFamily: "InterVariable, Inter, ui-sans-serif, system-ui, sans-serif",
   headerFontSize: 10,
   headerTextColor: "#64748b",
   oddRowBackgroundColor: "#0f1218",
+  rowHoverColor: "rgba(255, 255, 255, 0.04)",
   rowHeight: 36,
   selectedRowBackgroundColor: "rgba(207, 237, 102, 0.10)",
   wrapperBorderRadius: 8,
@@ -63,6 +67,12 @@ const defaultColumnDefinition: ColDef<GridRow, SqlValue> = {
   resizable: true,
   sortable: false,
   suppressHeaderMenuButton: true,
+};
+
+// Fill the available grid width whenever columns change (new table, reload).
+const autoSizeStrategy: AutoSizeStrategy = {
+  type: "fitGridWidth",
+  defaultMinWidth: 120,
 };
 
 const columnDefinitions = computed<ColDef<GridRow, SqlValue>[]>(() =>
@@ -106,6 +116,11 @@ function selectionChanged(event: SelectionChangedEvent<GridRow>): void {
 function rowDoubleClicked(event: RowDoubleClickedEvent<GridRow>): void {
   if (event.data) emit("row-double-click", event.data.source);
 }
+
+function gridSizeChanged(event: GridSizeChangedEvent<GridRow>): void {
+  // Keep columns filling the window as it is resized.
+  event.api.sizeColumnsToFit();
+}
 </script>
 
 <template>
@@ -122,8 +137,10 @@ function rowDoubleClicked(event: RowDoubleClickedEvent<GridRow>): void {
       :loading="loading"
       :animate-rows="false"
       :suppress-cell-focus="false"
+      :auto-size-strategy="autoSizeStrategy"
       @selection-changed="selectionChanged"
       @row-double-clicked="rowDoubleClicked"
+      @grid-size-changed="gridSizeChanged"
     />
   </div>
 </template>

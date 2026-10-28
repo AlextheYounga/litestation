@@ -91,19 +91,19 @@ onBeforeUnmount(() => invokingElement?.focus());
       :aria-describedby="messageId"
       @keydown="handleKeydown"
     >
-      <div class="mb-3 grid size-9 place-items-center rounded-lg border" :class="destructive ? 'border-rose-400/20 bg-rose-500/10 text-rose-300' : 'border-[#cfed66]/20 bg-[#cfed66]/10 text-[#cfed66]'" aria-hidden="true">
+      <div class="mb-3 grid size-9 place-items-center rounded-lg border" :class="destructive ? 'border-rose-400/20 bg-rose-500/10 text-rose-300' : 'border-accent/20 bg-accent/10 text-accent'" aria-hidden="true">
         <component :is="destructive ? TriangleAlert : Info" :size="16" />
       </div>
       <h2 :id="titleId" class="text-base font-semibold text-white">{{ title }}</h2>
       <p :id="messageId" class="mt-2 text-xs leading-5 text-slate-400">{{ message }}</p>
       <div class="mt-5 flex justify-end gap-2">
-        <button ref="cancelButton" type="button" class="rounded-md border border-white/10 px-3 py-2 text-xs text-slate-300 transition hover:bg-white/5" @click="cancel">Cancel</button>
+        <button ref="cancelButton" type="button" class="btn btn-sm px-3" @click="cancel">Cancel</button>
         <button
           type="button"
-          class="rounded-md border px-3 py-2 text-xs font-medium transition"
+          class="btn btn-sm px-3"
           :class="destructive
-            ? 'danger border-rose-400/20 bg-rose-500/15 text-rose-200 hover:bg-rose-500/25'
-            : 'border-[#cfed66]/20 bg-[#cfed66]/15 text-[#cfed66] hover:bg-[#cfed66]/25'"
+            ? 'danger border-rose-400/20 bg-rose-500/15 font-medium text-rose-200 hover:bg-rose-500/25'
+            : 'border-accent/20 bg-accent/15 font-medium text-accent hover:bg-accent/25'"
           @click="emit('confirm')"
         >
           {{ confirmLabel }}

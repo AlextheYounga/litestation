@@ -6,6 +6,7 @@ import {
   Clock,
   Database,
   FolderOpen,
+  RefreshCw,
   SquareTerminal,
   Star,
   Unplug,
@@ -200,38 +201,37 @@ async function updateSchema(): Promise<void> {
 
 <template>
   <main class="flex h-screen min-h-0 flex-col overflow-hidden bg-[#090b0f] text-slate-200">
-    <header class="flex h-14 shrink-0 items-center justify-between border-b border-white/8 bg-[#0d1016] px-5 text-xs">
+    <header class="flex h-14 shrink-0 items-center justify-between border-b border-white/8 bg-surface px-5 text-xs">
       <div class="flex items-center gap-2.5 font-semibold tracking-tight text-slate-100">
-        <span class="grid size-6 place-items-center rounded-md bg-[#cfed66] text-[11px] font-black text-[#182010] shadow-lg shadow-[#cfed66]/15" aria-hidden="true">L</span>
+        <span class="grid size-6 place-items-center rounded-md bg-accent text-2xs font-black text-accent-ink shadow-lg shadow-accent/15" aria-hidden="true">L</span>
         <span>LiteStation</span>
       </div>
-      <div v-if="connection" class="hidden items-center gap-2 text-slate-400 sm:flex">
-        <span class="grid size-5 place-items-center rounded bg-[#cfed66]/10 text-[#cfed66]" aria-hidden="true"><Database :size="11" /></span>
-        <span>{{ connection.displayName }}</span>
-        <span class="max-w-80 truncate text-slate-600">{{ connection.path }}</span>
-      </div>
-      <span class="hidden rounded-full border border-white/10 bg-white/[.03] px-2.5 py-1 text-[11px] text-slate-500 sm:block">Local · SQLite</span>
+      <span v-if="connection" class="chip rounded-full">
+        <span class="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" aria-hidden="true"></span>
+        Connected · Local SQLite
+      </span>
+      <span v-else class="chip hidden rounded-full sm:inline-flex">Local · SQLite</span>
     </header>
     <section v-if="!hasConnection" class="relative mx-auto grid min-h-0 max-w-5xl flex-1 items-center gap-12 overflow-auto px-6 py-16 lg:grid-cols-[1fr_400px]">
-      <div class="pointer-events-none absolute left-0 top-1/3 hidden h-96 w-96 -translate-x-24 rounded-full bg-[#cfed66]/6 blur-3xl lg:block" aria-hidden="true"></div>
+      <div class="pointer-events-none absolute left-0 top-1/3 hidden h-96 w-96 -translate-x-24 rounded-full bg-accent/6 blur-3xl lg:block" aria-hidden="true"></div>
       <div class="relative max-w-xl">
-        <span class="mb-5 inline-flex items-center gap-2 rounded-full border border-[#cfed66]/20 bg-[#cfed66]/8 px-3 py-1.5 text-[11px] font-medium text-[#cfed66]"><span class="size-1.5 rounded-full bg-[#cfed66]"></span>Local-first SQLite</span>
-        <h1 class="text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">A focused workspace<br /><span class="text-[#cfed66]">for your databases.</span></h1>
+        <span class="mb-5 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/8 px-3 py-1.5 text-2xs font-medium text-accent"><span class="size-1.5 rounded-full bg-accent"></span>Local-first SQLite</span>
+        <h1 class="text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">A focused workspace<br /><span class="text-accent">for your databases.</span></h1>
         <p class="mt-5 max-w-md text-sm leading-7 text-slate-400">Browse schemas, edit data, run queries, and export results without your database ever leaving this device.</p>
       </div>
-      <form class="rounded-2xl border border-white/10 bg-[#11151d] p-6 shadow-2xl shadow-black/20" @submit.prevent="openEnteredPath">
-        <div class="mb-5 grid size-11 place-items-center rounded-xl border border-[#cfed66]/15 bg-[#cfed66]/8 text-[#cfed66]" aria-hidden="true"><Database :size="20" /></div>
+      <form class="rounded-2xl border border-white/10 bg-panel p-6 shadow-2xl shadow-black/20" @submit.prevent="openEnteredPath">
+        <div class="mb-5 grid size-11 place-items-center rounded-xl border border-accent/15 bg-accent/8 text-accent" aria-hidden="true"><Database :size="20" /></div>
         <div>
           <h2 class="text-base font-semibold text-white">Open a SQLite database</h2>
           <p class="mt-1 text-xs leading-5 text-slate-500">Enter the path to, or choose, an existing <code>.db</code>, <code>.sqlite</code>, or <code>.sqlite3</code> file.</p>
         </div>
-        <label class="mt-6 block text-[11px] font-medium text-slate-400" for="database-path">Database path</label>
+        <label class="field-label mt-6" for="database-path">Database path</label>
         <div class="relative mt-2">
           <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" aria-hidden="true"><FolderOpen :size="13" /></span>
           <input
             id="database-path"
             v-model="selectedPath"
-            class="mt-0 block w-full rounded-lg border border-white/10 bg-black/15 py-2.5 pl-9 pr-3 text-xs text-slate-200 transition placeholder:text-slate-600 focus:border-[#cfed66]/40 focus:outline-none focus:ring-2 focus:ring-[#cfed66]/15"
+            class="field pl-9"
             type="text"
             placeholder="/path/to/database.sqlite"
             :disabled="opening || pickerBusy"
@@ -239,67 +239,77 @@ async function updateSchema(): Promise<void> {
           />
         </div>
         <div class="mt-3 grid grid-cols-2 gap-2">
-          <button class="rounded-lg bg-[#cfed66] px-4 py-2.5 text-xs font-semibold text-[#182010] shadow-lg shadow-[#cfed66]/10 transition hover:bg-[#d9f57c] disabled:hover:bg-[#cfed66]" :disabled="opening || pickerBusy">
+          <button class="btn btn-primary" :disabled="opening || pickerBusy">
             {{ opening ? "Opening…" : "Open database" }}
           </button>
-          <button type="button" class="flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white" :disabled="opening || pickerBusy" @click="openDatabase">
+          <button type="button" class="btn" :disabled="opening || pickerBusy" @click="openDatabase">
             <FolderOpen :size="13" /> {{ pickerBusy ? "Choosing…" : "Choose file" }}
           </button>
         </div>
-        <p v-if="errorMessage" class="mt-3 rounded-lg border border-rose-400/20 bg-rose-400/5 px-3 py-2 text-xs text-rose-300" role="alert">
+        <p v-if="errorMessage" class="alert alert-error mt-3" role="alert">
           {{ errorMessage }}
         </p>
-        <p v-if="persistenceWarning" class="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-xs text-amber-300" role="status">
+        <p v-if="persistenceWarning" class="alert alert-warn mt-3" role="status">
           Connection metadata could not be saved. Database work still works; check local storage permissions.
         </p>
       </form>
-        <section
+      <section
         v-if="savedConnections.length || recentConnections.length"
         class="col-span-full grid max-h-64 gap-5 overflow-auto rounded-xl border border-white/8 bg-[#0f131a] p-5 lg:col-start-2"
         aria-label="Saved and recent databases"
       >
-          <div v-if="savedConnections.length" class="space-y-2">
-            <h2 class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500"><Star :size="11" class="text-[#cfed66]/70" /> Saved</h2>
+        <div v-if="savedConnections.length" class="space-y-2">
+          <h2 class="eyebrow flex items-center gap-1.5"><Star :size="11" class="text-accent/70" /> Saved</h2>
           <ul class="catalog-list">
             <li v-for="entry in savedConnections" :key="entry.id">
               <span class="ml-2 grid size-4 shrink-0 place-items-center text-slate-600" aria-hidden="true"><Database :size="11" /></span>
               <button type="button" class="grid min-w-0 flex-1 rounded-lg px-3 py-2 text-left transition hover:bg-white/5" :disabled="controlsDisabled" @click="openPath(entry.path)">
-                <strong class="truncate text-xs font-medium text-slate-200">{{ entry.displayName }}</strong><span class="truncate text-[11px] text-slate-500">{{ entry.path }}</span>
+                <strong class="truncate text-xs font-medium text-slate-200">{{ entry.displayName }}</strong><span class="truncate text-2xs text-slate-500">{{ entry.path }}</span>
               </button>
-              <button type="button" class="px-2 text-[10px] text-slate-600 hover:text-rose-300" :disabled="controlsDisabled" :aria-label="`Forget saved connection ${entry.displayName}; database files are not deleted`" @click="forgetConnection(entry)">Forget</button>
+              <button type="button" class="px-2 text-2xs text-slate-600 hover:text-rose-300" :disabled="controlsDisabled" :aria-label="`Forget saved connection ${entry.displayName}; database files are not deleted`" @click="forgetConnection(entry)">Forget</button>
             </li>
           </ul>
         </div>
-          <div v-if="recentConnections.length" class="space-y-2">
-            <h2 class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500"><Clock :size="11" /> Recent</h2>
+        <div v-if="recentConnections.length" class="space-y-2">
+          <h2 class="eyebrow flex items-center gap-1.5"><Clock :size="11" /> Recent</h2>
           <ul class="catalog-list">
             <li v-for="entry in recentConnections" :key="entry.id">
               <span class="ml-2 grid size-4 shrink-0 place-items-center text-slate-600" aria-hidden="true"><Database :size="11" /></span>
               <button type="button" class="grid min-w-0 flex-1 rounded-lg px-3 py-2 text-left transition hover:bg-white/5" :disabled="controlsDisabled" @click="openPath(entry.path)">
-                <strong class="truncate text-xs font-medium text-slate-200">{{ entry.displayName }}</strong><span class="truncate text-[11px] text-slate-500">{{ entry.path }} · {{ formatOpenedAt(entry.lastOpenedAt) }}</span>
+                <strong class="truncate text-xs font-medium text-slate-200">{{ entry.displayName }}</strong><span class="truncate text-2xs text-slate-500">{{ entry.path }} · {{ formatOpenedAt(entry.lastOpenedAt) }}</span>
               </button>
-              <button type="button" class="px-2 text-[10px] text-slate-600 hover:text-rose-300" :disabled="controlsDisabled" :aria-label="`Forget recent connection ${entry.displayName}; database files are not deleted`" @click="forgetConnection(entry)">Forget</button>
+              <button type="button" class="px-2 text-2xs text-slate-600 hover:text-rose-300" :disabled="controlsDisabled" :aria-label="`Forget recent connection ${entry.displayName}; database files are not deleted`" @click="forgetConnection(entry)">Forget</button>
             </li>
           </ul>
         </div>
-        <p class="text-[10px] text-slate-600">Forget removes LiteStation metadata only. It never deletes database files.</p>
+        <p class="text-2xs text-slate-600">Forget removes LiteStation metadata only. It never deletes database files.</p>
       </section>
     </section>
     <section v-else class="grid min-h-0 flex-1 grid-cols-[240px_minmax(0,1fr)] overflow-hidden lg:grid-cols-[260px_minmax(0,1fr)]">
-      <aside class="flex min-h-0 flex-col overflow-hidden border-r border-white/8 bg-[#0d1016] p-3">
+      <aside class="flex min-h-0 flex-col overflow-hidden border-r border-white/8 bg-surface p-3">
+        <div v-if="connection" class="mb-3 flex shrink-0 items-center gap-2.5 rounded-lg border border-white/8 bg-white/[.025] px-3 py-2.5">
+          <span class="grid size-7 shrink-0 place-items-center rounded-md bg-accent/10 text-accent" aria-hidden="true"><Database :size="14" /></span>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-xs font-medium text-slate-200">{{ connection.displayName }}</p>
+            <p class="text-2xs text-slate-600">{{ connection.schema.tables.length }} tables · {{ connection.schema.views.length }} views</p>
+          </div>
+        </div>
         <nav class="shrink-0" aria-label="Workspace views">
-          <p class="mb-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Workspace</p>
-          <button
-            type="button"
-            class="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition hover:bg-white/5 disabled:hover:bg-transparent"
-            :class="{ active: selectedTable === null }"
-            :aria-current="selectedTable === null ? 'page' : undefined"
-            :disabled="controlsDisabled"
-            @click="selectedTable = null"
-          >
-            <span class="text-[#cfed66]" aria-hidden="true"><SquareTerminal :size="14" /></span>
-            <span :class="selectedTable === null ? 'text-slate-100' : 'text-slate-400'">SQL editor</span>
-          </button>
+          <p class="eyebrow mb-2 px-2">Workspace</p>
+          <div class="relative">
+            <span v-if="selectedTable === null" class="absolute inset-y-1 left-0 w-0.5 rounded-full bg-accent" aria-hidden="true"></span>
+            <button
+              type="button"
+              class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs transition hover:bg-white/5 disabled:hover:bg-transparent"
+              :class="{ active: selectedTable === null }"
+              :aria-current="selectedTable === null ? 'page' : undefined"
+              :disabled="controlsDisabled"
+              @click="selectedTable = null"
+            >
+              <span :class="selectedTable === null ? 'text-accent' : 'text-slate-500'" aria-hidden="true"><SquareTerminal :size="14" /></span>
+              <span :class="selectedTable === null ? 'text-slate-100' : 'text-slate-400'">SQL editor</span>
+            </button>
+          </div>
         </nav>
         <div class="min-h-0 flex-1 overflow-y-auto">
           <SchemaBrowser
@@ -312,10 +322,10 @@ async function updateSchema(): Promise<void> {
         </div>
       </aside>
       <section class="min-h-0 min-w-0 bg-[#0a0d12] p-4 sm:p-5" :class="selectedTable ? 'overflow-hidden' : 'overflow-auto'">
-        <p v-if="persistenceWarning" class="mb-3 rounded-md border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-xs text-amber-300" role="status">
+        <p v-if="persistenceWarning" class="alert alert-warn mb-3" role="status">
           Connection metadata could not be saved. Database work still works; check local storage permissions.
         </p>
-        <p v-if="errorMessage" class="mb-3 rounded-md border border-rose-400/20 bg-rose-400/5 px-3 py-2 text-xs text-rose-300" role="alert">
+        <p v-if="errorMessage" class="alert alert-error mb-3" role="alert">
           {{ errorMessage }}
         </p>
         <TableWorkspace
@@ -336,8 +346,8 @@ async function updateSchema(): Promise<void> {
         />
       </section>
     </section>
-    <footer v-if="connection" class="flex h-10 shrink-0 items-center gap-3 border-t border-white/8 bg-[#0d1016] px-3">
-      <div class="flex min-w-0 items-center gap-2 text-[11px]">
+    <footer v-if="connection" class="flex h-10 shrink-0 items-center gap-3 border-t border-white/8 bg-surface px-3">
+      <div class="flex min-w-0 items-center gap-2 text-xs">
         <span class="size-1.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" aria-hidden="true"></span>
         <strong class="shrink-0 font-medium text-slate-300">{{ connection.displayName }}</strong>
         <span class="hidden max-w-80 truncate text-slate-600 md:block" :title="connection.path">{{ connection.path }}</span>
@@ -350,9 +360,17 @@ async function updateSchema(): Promise<void> {
         />
         <span class="mx-1 h-4 w-px bg-white/10" aria-hidden="true"></span>
         <button
+          type="button"
+          class="icon-btn"
+          :disabled="controlsDisabled"
+          :aria-label="schemaRefreshing ? 'Refreshing schema…' : 'Refresh schema'"
+          :title="schemaRefreshing ? 'Refreshing schema…' : 'Refresh schema'"
+          @click="updateSchema"
+        ><RefreshCw :size="14" :class="{ 'animate-spin': schemaRefreshing }" /></button>
+        <button
           v-if="activeCatalogEntry?.saved"
           type="button"
-          class="grid size-7 place-items-center rounded text-slate-500 hover:bg-white/5 hover:text-white"
+          class="icon-btn"
           :disabled="controlsDisabled"
           aria-label="Remove from saved connections"
           title="Remove from saved connections"
@@ -361,7 +379,7 @@ async function updateSchema(): Promise<void> {
         <button
           v-else
           type="button"
-          class="grid size-7 place-items-center rounded text-slate-500 hover:bg-white/5 hover:text-white"
+          class="icon-btn"
           :disabled="controlsDisabled"
           aria-label="Save connection"
           title="Save connection"
@@ -370,7 +388,7 @@ async function updateSchema(): Promise<void> {
         <button
           v-if="activeCatalogEntry"
           type="button"
-          class="grid size-7 place-items-center rounded text-slate-600 hover:bg-white/5 hover:text-rose-300"
+          class="icon-btn text-slate-600 hover:text-rose-300"
           :disabled="controlsDisabled"
           aria-label="Forget connection metadata"
           title="Forget connection metadata"
@@ -378,7 +396,7 @@ async function updateSchema(): Promise<void> {
         ><X :size="14" /></button>
         <button
           type="button"
-          class="grid size-7 place-items-center rounded text-slate-500 hover:bg-rose-400/10 hover:text-rose-300"
+          class="icon-btn hover:bg-rose-400/10 hover:text-rose-300"
           :disabled="controlsDisabled"
           aria-label="Disconnect"
           title="Disconnect"

@@ -33,10 +33,10 @@ function itemLabel(item: SchemaItem): string {
   <section class="mt-7" aria-labelledby="schema-heading">
     <div class="flex items-center justify-between px-2">
       <div>
-        <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-600">Object browser</p>
+        <p class="eyebrow">Object browser</p>
         <h2 id="schema-heading" class="mt-1 text-xs font-semibold text-slate-300">Schema</h2>
       </div>
-      <span class="rounded-full border border-white/10 bg-white/[.03] px-2 py-0.5 text-[10px] text-slate-500">{{ objectTotal }}</span>
+      <span class="chip rounded-full px-2 py-0.5">{{ objectTotal }}</span>
     </div>
 
     <div class="schema-groups">
@@ -46,7 +46,7 @@ function itemLabel(item: SchemaItem): string {
         class="mt-5"
         :aria-labelledby="`${group.key}-heading`"
       >
-        <h3 :id="`${group.key}-heading`" class="mb-1.5 flex items-center gap-1.5 px-2 text-[10px] font-medium uppercase tracking-widest text-slate-600">
+        <h3 :id="`${group.key}-heading`" class="eyebrow mb-1.5 flex items-center gap-1.5 px-2">
           <component :is="group.icon" :size="11" class="shrink-0 text-slate-500" />
           <span class="min-w-0 flex-1">{{ group.label }}</span>
           <span v-if="schema[group.key].length" class="shrink-0 normal-case tracking-normal text-slate-600">{{ schema[group.key].length }}</span>
@@ -59,7 +59,7 @@ function itemLabel(item: SchemaItem): string {
             <div class="group relative">
               <span
                 v-if="group.key === 'tables' && selectedTable === item.name"
-                class="absolute inset-y-1 left-0 w-0.5 rounded-full bg-[#cfed66]"
+                class="absolute inset-y-1 left-0 w-0.5 rounded-full bg-accent"
                 aria-hidden="true"
               ></span>
               <button
@@ -67,7 +67,7 @@ function itemLabel(item: SchemaItem): string {
                 type="button"
                 :disabled="disabled"
                 class="w-full truncate rounded-md px-3 py-1.5 text-left text-xs transition hover:bg-white/5 hover:text-slate-200 disabled:hover:bg-transparent"
-                :class="selectedTable === item.name ? 'bg-[#cfed66]/10 text-[#cfed66]' : 'text-slate-400'"
+                :class="selectedTable === item.name ? 'bg-accent/10 text-accent' : 'text-slate-400'"
                 :title="item.name"
                 @click="emit('selectTable', item.name)"
               >
@@ -81,7 +81,7 @@ function itemLabel(item: SchemaItem): string {
             </div>
           </li>
         </ul>
-        <p v-else class="px-2 text-[11px] text-slate-700">
+        <p v-else class="px-2 text-xs text-slate-700">
           No {{ group.label.toLowerCase() }} found
         </p>
       </section>

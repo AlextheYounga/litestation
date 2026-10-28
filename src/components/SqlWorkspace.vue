@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue";
-import { Play } from "@lucide/vue";
+import { LoaderCircle, Play, SquareTerminal } from "@lucide/vue";
 import ConfirmDialog from "./ConfirmDialog.vue";
 import ResultGrid from "./ResultGrid.vue";
 import SqlEditor from "./SqlEditor.vue";
@@ -218,14 +218,17 @@ function exportError(cause: unknown): string {
 
 <template>
   <section class="grid gap-4">
-    <header class="flex items-end justify-between gap-4">
-      <div>
-        <p class="text-[10px] font-semibold uppercase tracking-widest text-[#cfed66]">SQL query</p>
-        <h2 class="mt-1 text-xl font-semibold tracking-tight text-white">Query workspace</h2>
+    <header class="flex items-center justify-between gap-4">
+      <div class="flex min-w-0 items-center gap-2.5">
+        <span class="grid size-7 shrink-0 place-items-center rounded-md bg-accent/10 text-accent" aria-hidden="true"><SquareTerminal :size="14" /></span>
+        <div class="min-w-0">
+          <p class="eyebrow-accent">SQL query</p>
+          <h2 class="mt-0.5 truncate text-lg font-semibold tracking-tight text-white">Query workspace</h2>
+        </div>
       </div>
       <button
         type="button"
-        class="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-300 transition hover:border-[#cfed66]/30 hover:bg-[#cfed66]/10 hover:text-[#cfed66]"
+        class="btn shrink-0 hover:border-accent/30 hover:bg-accent/10 hover:text-accent"
         :disabled="busy"
         @click="requestRunAll"
       >
@@ -237,23 +240,24 @@ function exportError(cause: unknown): string {
       @update:model-value="emit('update:modelValue', $event)"
       @run="run"
     />
-    <p v-if="error" class="rounded-lg border border-rose-400/20 bg-rose-400/5 px-3 py-2 text-xs text-rose-300" role="alert">{{ error }}</p>
-    <p v-if="running || status" role="status" class="text-xs text-slate-500">
+    <p v-if="error" class="alert alert-error" role="alert">{{ error }}</p>
+    <p v-if="running || status" role="status" class="flex items-center gap-1.5 text-xs text-slate-500">
+      <LoaderCircle v-if="running" :size="12" class="animate-spin text-accent" aria-hidden="true" />
       {{ status }}
     </p>
-    <div v-if="result" class="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-      <span class="rounded-md border border-white/8 bg-white/[.03] px-2 py-1">{{ result.durationMs }} ms</span>
-      <span v-if="result.affectedRows !== null" class="rounded-md border border-white/8 bg-white/[.03] px-2 py-1"
+    <div v-if="result" class="flex flex-wrap items-center gap-2">
+      <span class="chip">{{ result.durationMs }} ms</span>
+      <span v-if="result.affectedRows !== null" class="chip"
         >{{ result.affectedRows }} affected</span
       >
-      <span v-if="result.truncated" class="rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-amber-300"
+      <span v-if="result.truncated" class="chip border-amber-400/20 bg-amber-400/10 text-amber-300"
         >Showing first 100 rows; result was truncated.</span
       >
     </div>
     <div v-if="result?.columns.length" class="flex flex-wrap items-center gap-2" aria-label="Export displayed query result">
-      <span class="text-[11px] text-slate-600">Export displayed rows</span>
-      <button type="button" class="rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] text-slate-400 transition hover:bg-white/5 hover:text-white" :disabled="busy" @click="exportResult('json')">Export JSON</button>
-      <button type="button" class="rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] text-slate-400 transition hover:bg-white/5 hover:text-white" :disabled="busy" @click="exportResult('csv')">Export CSV</button>
+      <span class="text-2xs text-slate-600">Export displayed rows</span>
+      <button type="button" class="btn btn-sm" :disabled="busy" @click="exportResult('json')">Export JSON</button>
+      <button type="button" class="btn btn-sm" :disabled="busy" @click="exportResult('csv')">Export CSV</button>
     </div>
     <ResultGrid
       v-if="result"

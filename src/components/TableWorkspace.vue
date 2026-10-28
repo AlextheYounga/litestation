@@ -4,9 +4,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  LoaderCircle,
   Pencil,
   Plus,
   RefreshCw,
+  Table2,
   Trash2,
 } from "@lucide/vue";
 import ConfirmDialog from "./ConfirmDialog.vue";
@@ -273,24 +275,27 @@ function exportError(cause: unknown): string {
 <template>
   <section class="flex h-full min-h-0 flex-col gap-3">
     <header class="flex min-h-14 items-center justify-between gap-4 border-b border-white/8 pb-3">
-      <div>
-        <p class="text-[10px] font-semibold uppercase tracking-widest text-[#cfed66]">Table browser</p>
-        <div class="mt-1 flex items-baseline gap-2">
-          <h2 class="text-lg font-semibold tracking-tight text-white">{{ tableName }}</h2>
-          <span v-if="page" class="text-[11px] text-slate-600">{{ page.metadata.columns.length }} columns</span>
+      <div class="flex min-w-0 items-center gap-2.5">
+        <span class="grid size-7 shrink-0 place-items-center rounded-md bg-accent/10 text-accent" aria-hidden="true"><Table2 :size="14" /></span>
+        <div class="min-w-0">
+          <p class="eyebrow-accent">Table browser</p>
+          <div class="mt-0.5 flex items-baseline gap-2">
+            <h2 class="truncate text-lg font-semibold tracking-tight text-white">{{ tableName }}</h2>
+            <span v-if="page" class="shrink-0 text-2xs text-slate-600">{{ page.metadata.columns.length }} columns</span>
+          </div>
         </div>
       </div>
       <div v-if="activeTab === 'data'" class="flex items-center gap-1.5">
         <button
           type="button"
-          class="grid size-8 place-items-center rounded-md border border-white/10 text-slate-400 transition hover:bg-white/5 hover:text-white"
+          class="icon-btn"
           :disabled="busy"
           title="Refresh rows"
           aria-label="Refresh rows"
           @click="load(page?.offset ?? 0)"
         ><RefreshCw :size="14" :class="{ 'animate-spin': loading }" /></button>
         <button
-          class="flex h-8 items-center gap-1.5 rounded-md bg-[#cfed66] px-3 text-xs font-semibold text-[#182010] transition hover:bg-[#d9f57c] disabled:hover:bg-[#cfed66]"
+          class="btn btn-primary"
           :disabled="!canMutate || busy"
           :title="mutationReason ?? 'Insert row'"
           type="button"
@@ -301,24 +306,23 @@ function exportError(cause: unknown): string {
       </div>
     </header>
     <nav class="flex shrink-0 gap-5 border-b border-white/8" aria-label="Table views">
-      <button type="button" class="border-b-2 px-1 pb-2 text-xs font-medium transition" :class="activeTab === 'data' ? 'border-[#cfed66] text-[#cfed66]' : 'border-transparent text-slate-500 hover:text-slate-300'" :aria-current="activeTab === 'data' ? 'page' : undefined" @click="activeTab = 'data'">Data</button>
-      <button type="button" class="border-b-2 px-1 pb-2 text-xs font-medium transition" :class="activeTab === 'indexes' ? 'border-[#cfed66] text-[#cfed66]' : 'border-transparent text-slate-500 hover:text-slate-300'" :aria-current="activeTab === 'indexes' ? 'page' : undefined" @click="activeTab = 'indexes'">
-        Indexes <span class="ml-1 text-[10px] text-slate-600">{{ tableIndexCount }}</span>
+      <button type="button" class="border-b-2 px-1 pb-2 text-xs font-medium transition" :class="activeTab === 'data' ? 'border-accent text-accent' : 'border-transparent text-slate-500 hover:text-slate-300'" :aria-current="activeTab === 'data' ? 'page' : undefined" @click="activeTab = 'data'">Data</button>
+      <button type="button" class="border-b-2 px-1 pb-2 text-xs font-medium transition" :class="activeTab === 'indexes' ? 'border-accent text-accent' : 'border-transparent text-slate-500 hover:text-slate-300'" :aria-current="activeTab === 'indexes' ? 'page' : undefined" @click="activeTab = 'indexes'">
+        Indexes <span class="ml-1 text-2xs text-slate-600">{{ tableIndexCount }}</span>
       </button>
     </nav>
     <template v-if="activeTab === 'data'">
-    <p v-if="mutationReason" class="rounded-lg border border-amber-400/15 bg-amber-400/5 px-3 py-2 text-xs text-amber-300">
+    <p v-if="mutationReason" class="alert alert-warn">
       Editing unavailable: {{ mutationReason }}
     </p>
-    <p v-if="error" class="rounded-lg border border-rose-400/20 bg-rose-400/5 px-3 py-2 text-xs text-rose-300" role="alert">{{ error }}</p>
+    <p v-if="error" class="alert alert-error" role="alert">{{ error }}</p>
     <p v-if="status" class="text-xs text-emerald-300" role="status">{{ status }}</p>
-    <p v-if="loading" class="text-xs text-slate-500" role="status">Loading rows…</p>
     <template v-if="page">
       <div class="flex shrink-0 flex-wrap items-center gap-1.5" aria-label="Table actions">
-        <span class="mr-auto text-[11px] text-slate-600">{{ selectedRows.length ? `${selectedRows.length} selected` : `${page.rows.length} displayed rows` }} · {{ page.metadata.identityKind }} identity</span>
+        <span class="mr-auto text-2xs text-slate-600">{{ selectedRows.length ? `${selectedRows.length} selected` : `${page.rows.length} displayed rows` }} · {{ page.metadata.identityKind }} identity</span>
         <button
           type="button"
-          class="grid size-7 place-items-center rounded-md border border-white/10 text-slate-500 hover:bg-white/5 hover:text-white"
+          class="icon-btn"
           :disabled="!canMutate || !selectedEditableRow || busy"
           aria-label="Edit selected row"
           title="Edit selected row"
@@ -326,33 +330,48 @@ function exportError(cause: unknown): string {
         ><Pencil :size="13" /></button>
         <button
           type="button"
-          class="grid size-7 place-items-center rounded-md border border-white/10 text-slate-600 hover:bg-rose-400/10 hover:text-rose-300"
+          class="icon-btn text-slate-600 hover:bg-rose-400/10 hover:text-rose-300"
           :disabled="!canMutate || !selectedEditableRow || busy"
           aria-label="Delete selected row"
           title="Delete selected row"
           @click="deleteSelectedRow"
         ><Trash2 :size="13" /></button>
-        <button type="button" class="flex h-7 items-center gap-1.5 rounded-md border border-white/10 px-2.5 text-[11px] text-slate-400 hover:bg-white/5 hover:text-white" :disabled="busy" @click="exportPage('json')"><Download :size="12" /> JSON</button>
-        <button type="button" class="flex h-7 items-center gap-1.5 rounded-md border border-white/10 px-2.5 text-[11px] text-slate-400 hover:bg-white/5 hover:text-white" :disabled="busy" @click="exportPage('csv')"><Download :size="12" /> CSV</button>
+        <button type="button" class="btn btn-sm" :disabled="busy" @click="exportPage('json')"><Download :size="12" /> JSON</button>
+        <button type="button" class="btn btn-sm" :disabled="busy" @click="exportPage('csv')"><Download :size="12" /> CSV</button>
       </div>
-      <DatabaseGrid
-        :columns="page.columns"
-        :rows="page.rows"
-        :offset="page.offset"
-        :loading="loading"
-        @selection-change="selectedRows = $event"
-        @row-double-click="editDoubleClickedRow"
-      />
-      <nav class="flex shrink-0 items-center justify-between text-xs text-slate-500" aria-label="Table pages">
-        <button class="flex h-7 items-center gap-1 rounded-md border border-white/10 px-2 text-[11px] hover:bg-white/5 hover:text-white" :disabled="busy || page.offset === 0"
+      <div class="relative flex min-h-0 flex-1 flex-col" aria-label="Table data">
+        <DatabaseGrid
+          :columns="page.columns"
+          :rows="page.rows"
+          :offset="page.offset"
+          :loading="loading"
+          @selection-change="selectedRows = $event"
+          @row-double-click="editDoubleClickedRow"
+        />
+        <div
+          v-if="loading"
+          class="overlay-in absolute inset-0 z-10 grid place-items-center rounded-lg bg-surface/70 backdrop-blur-[1px]"
+          role="status"
+        >
+          <span class="flex items-center gap-2 rounded-full border border-white/10 bg-surface px-4 py-2 text-xs text-slate-400 shadow-xl">
+            <LoaderCircle :size="13" class="animate-spin text-accent" /> Loading rows…
+          </span>
+        </div>
+      </div>
+      <nav class="flex shrink-0 items-center justify-between gap-2" aria-label="Table pages">
+        <button
+          class="btn btn-sm hover:border-white/10 hover:bg-white/5 hover:text-white disabled:hover:bg-transparent disabled:hover:text-slate-500"
+          :disabled="busy || page.offset === 0"
+          :title="page.offset === 0 ? 'Already on the first page' : 'Previous 100 rows'"
           @click="load(Math.max(0, page.offset - page.limit))"
         >
           <ChevronLeft :size="13" /> Previous
         </button>
-        <span
-          >Rows {{ page.offset + 1 }}–{{ page.offset + page.rows.length }}</span
-        >
-        <button class="flex h-7 items-center gap-1 rounded-md border border-white/10 px-2 text-[11px] hover:bg-white/5 hover:text-white" :disabled="busy || !page.hasMore"
+        <span class="text-2xs tabular-nums text-slate-500">Rows {{ page.offset + 1 }}–{{ page.offset + page.rows.length }}</span>
+        <button
+          class="btn btn-sm hover:border-white/10 hover:bg-white/5 hover:text-white disabled:hover:bg-transparent disabled:hover:text-slate-500"
+          :disabled="busy || !page.hasMore"
+          :title="page.hasMore ? 'Next 100 rows' : 'No more rows'"
           @click="load(page.offset + page.limit)"
         >
           Next <ChevronRight :size="13" />

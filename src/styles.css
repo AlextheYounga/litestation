@@ -1,30 +1,105 @@
+/* LiteStation design system — the single source of truth for
+   typography, spacing, and shared component styling. */
+
 @import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "SFMono-Regular", "Cascadia Code", "Roboto Mono", monospace;
+  /* Typography — a fixed scale. No ad-hoc sizes elsewhere. */
+  --font-sans: "InterVariable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono",
+    ui-monospace, "SFMono-Regular", monospace;
+
+  --text-2xs: 0.625rem;            /* 10px — eyebrows, badges, meta */
+  --text-2xs--line-height: 0.875rem;
+  --text-xs: 0.75rem;              /* 12px — body, buttons, labels, cells */
+  --text-xs--line-height: 1rem;
+
+  /* Surfaces and accent — mapped to utilities (bg-surface, text-accent, …) */
+  --color-canvas: #090b0f;
+  --color-surface: #0d1016;
+  --color-panel: #11151d;
+  --color-raised: #151a23;
+  --color-accent: #cfed66;
+  --color-accent-hover: #d9f57c;
+  --color-accent-ink: #182010;
 }
 
 :root {
   font-synthesis: none;
   color-scheme: dark;
-  background: #090b0f;
+  background: var(--color-canvas);
 }
 
 * { box-sizing: border-box; }
 html, body, #app { width: 100%; height: 100%; min-width: 320px; margin: 0; overflow: hidden; }
-body { background: #090b0f; color: #e5e7eb; font-family: var(--font-sans); }
+body {
+  background: var(--color-canvas);
+  color: #e5e7eb;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+}
 button, input, select { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .5; }
 button:focus-visible, input:focus-visible, select:focus-visible {
-  outline: 2px solid #cfed66;
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
+@layer components {
+  /* Section labels — the small uppercase headers used everywhere. */
+  .eyebrow { @apply text-2xs font-semibold uppercase tracking-widest text-slate-600; }
+  .eyebrow-accent { @apply text-2xs font-semibold uppercase tracking-widest text-accent; }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white;
+  }
+  .btn-primary {
+    @apply border-transparent bg-accent font-semibold text-accent-ink shadow-lg shadow-accent/10 hover:bg-accent-hover;
+  }
+  .btn-sm { @apply h-7 gap-1 rounded-md px-2.5; }
+  .icon-btn {
+    @apply grid size-7 shrink-0 place-items-center rounded-md text-slate-500 transition hover:bg-white/5 hover:text-white;
+  }
+
+  /* Form fields */
+  .field {
+    @apply w-full rounded-lg border border-white/10 bg-black/15 px-3 py-2.5 text-xs text-slate-200 transition placeholder:text-slate-600 focus:border-accent/40 focus:outline-none focus:ring-2 focus:ring-accent/15;
+  }
+  .field-label { @apply block text-2xs font-medium text-slate-400; }
+
+  /* Small inline metadata pills */
+  .chip { @apply inline-flex items-center gap-1.5 rounded-md border border-white/8 bg-white/[.03] px-2 py-1 text-2xs text-slate-500; }
+
+  /* Notices */
+  .alert { @apply rounded-lg border px-3 py-2 text-xs; }
+  .alert-error { @apply border-rose-400/20 bg-rose-400/5 text-rose-300; }
+  .alert-warn { @apply border-amber-400/20 bg-amber-400/5 text-amber-300; }
+
+  /* Containing panels */
+  .panel { @apply rounded-xl border border-white/10 bg-surface; }
+}
+
+/* CodeMirror — the editor is the one purposeful exception: mono at 13px. */
 .cm-editor { min-height: 260px; font-family: var(--font-mono); font-size: 13px; }
 .cm-editor.cm-focused { outline: none; }
-.cm-scroller { overflow: auto; }
+.cm-editor .cm-scroller { overflow: auto; }
+.cm-editor .cm-cursor { border-left-color: var(--color-accent); border-left-width: 2px; }
+.cm-editor .cm-selectionBackground,
+.cm-editor.cm-focused .cm-selectionBackground,
+.cm-editor ::selection { background: rgb(207 237 102 / .18) !important; }
+.cm-editor .cm-gutters {
+  background: transparent;
+  border-right: 1px solid rgb(255 255 255 / .05);
+  color: #454e5e;
+}
+.cm-editor .cm-activeLine { background: rgb(255 255 255 / .02); }
+.cm-editor .cm-activeLineGutter { background: rgb(207 237 102 / .06); color: #8b96a8; }
+
+/* Data tables */
 .grid-scroll { scrollbar-color: #374151 transparent; }
 .grid-scroll table { border-collapse: separate; border-spacing: 0; }
 .grid-scroll th, .grid-scroll td { white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -47,7 +122,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 /* Active workspace view in the sidebar. */
 button.active {
   background: rgb(207 237 102 / 0.1);
-  color: #cfed66;
+  color: var(--color-accent);
 }
 
 /* Soft entrance for overlays and sliding panels. */
@@ -66,9 +141,4 @@ button.active {
 
 @media (prefers-reduced-motion: reduce) {
   .overlay-in, .dialog-in, .panel-in { animation: none; }
-}
-
-@media (prefers-color-scheme: light) {
-  :root { color-scheme: light; }
-  body { background: #f5f7fb; color: #111827; }
 }
