@@ -3,23 +3,19 @@ import { computed, ref } from "vue";
 import {
   Bookmark,
   BookmarkX,
-  Clock,
   Database,
-  Download,
-  FolderOpen,
-  Pencil,
   RefreshCw,
   SquareTerminal,
-  Star,
-  Table2,
   Unplug,
   X,
 } from "@lucide/vue";
 import SchemaBrowser from "./components/SchemaBrowser.vue";
 import DatabaseTools from "./components/DatabaseTools.vue";
+import DatabaseTabs from "./components/DatabaseTabs.vue";
 import SqlWorkspace from "./components/SqlWorkspace.vue";
 import TableWorkspace from "./components/TableWorkspace.vue";
 import WelcomeBackdrop from "./components/WelcomeBackdrop.vue";
+import WelcomeScreen from "./components/WelcomeScreen.vue";
 import {
   chooseSqliteFile,
   closeDatabase,
@@ -27,29 +23,38 @@ import {
   openLocalDatabase,
   refreshSchema,
 } from "./services/database";
-import type { DatabaseConnection } from "./types/database";
 import type { ConnectionCatalogEntry } from "./types/connectionCatalog";
 import { browserCatalogStorage, ConnectionCatalog } from "./services/connectionCatalog";
 import { openPath as openDatabasePath } from "./services/openPath";
 import { applyImportedSchema, selectedTableExists } from "./utils/schema";
+import { useDatabaseSessions } from "./composables/useDatabaseSessions";
 
 const selectedPath = ref("");
-const connection = ref<DatabaseConnection | null>(null);
 const opening = ref(false);
 const pickerBusy = ref(false);
-const closing = ref(false);
-const schemaRefreshing = ref(false);
-const workspaceBusy = ref(false);
-const toolsBusy = ref(false);
-const errorMessage = ref("");
+const closingConnectionIds = ref(new Set<number>());
+const openErrorMessage = ref("");
 const persistenceWarning = ref(false);
-const selectedTable = ref<string | null>(null);
-const sqlSource = ref("SELECT name FROM sqlite_master ORDER BY name;");
 const catalog = new ConnectionCatalog(browserCatalogStorage());
 const catalogEntries = ref<ConnectionCatalogEntry[]>([]);
-let connectionGeneration = 0;
+const databaseSessions = useDatabaseSessions();
+const { sessions, activeConnectionId, activeSession } = databaseSessions;
+let openGeneration = 0;
 
-const hasConnection = computed(() => connection.value !== null);
+const connection = computed(() => activeSession.value?.connection ?? null);
+const hasConnection = computed(() => sessions.value.length > 0);
+const selectedTable = computed({
+  get: () => activeSession.value?.selectedTable ?? null,
+  set: (table: string | null) => {
+    if (activeSession.value) activeSession.value.selectedTable = table;
+  },
+});
+const sqlSource = computed({
+  get: () => activeSession.value?.sqlSource ?? "",
+  set: (sql: string) => {
+    if (activeSession.value) activeSession.value.sqlSource = sql;
+  },
+});
 const savedConnections = computed(() =>
   catalogEntries.value.filter((entry) => entry.saved),
 );
@@ -65,28 +70,34 @@ const controlsDisabled = computed(
   () =>
     opening.value ||
     pickerBusy.value ||
-    closing.value ||
-    workspaceBusy.value ||
-    toolsBusy.value ||
-    schemaRefreshing.value,
+    (connection.value !== null && closingConnectionIds.value.has(connection.value.id)) ||
+    activeSession.value?.workspaceBusy ||
+    activeSession.value?.toolsBusy ||
+    activeSession.value?.schemaRefreshing ||
+    false,
 );
+const busyConnectionIds = computed(() => new Set(
+  sessions.value
+    .filter((session) => session.workspaceBusy || session.toolsBusy || session.schemaRefreshing)
+    .map((session) => session.connection.id),
+));
 
 applyCatalogState(catalog.load());
 
 async function openDatabase(): Promise<void> {
-  if (opening.value || pickerBusy.value || connection.value) return;
-  const pickerGeneration = ++connectionGeneration;
+  if (opening.value || pickerBusy.value) return;
+  const pickerGeneration = ++openGeneration;
   pickerBusy.value = true;
   let path: string | null;
   try {
     path = await chooseSqliteFile();
   } catch (error) {
-    if (pickerGeneration === connectionGeneration)
-      errorMessage.value = normalizeBackendError(error).message;
+    if (pickerGeneration === openGeneration)
+      openErrorMessage.value = normalizeBackendError(error).message;
     pickerBusy.value = false;
     return;
   }
-  if (pickerGeneration !== connectionGeneration) {
+  if (pickerGeneration !== openGeneration) {
     pickerBusy.value = false;
     return;
   }
@@ -99,7 +110,7 @@ async function openDatabase(): Promise<void> {
 async function openEnteredPath(): Promise<void> {
   const path = selectedPath.value.trim();
   if (!path) {
-    errorMessage.value = "Enter the path to an existing SQLite database.";
+    openErrorMessage.value = "Enter the path to an existing SQLite database.";
     return;
   }
 
@@ -108,20 +119,30 @@ async function openEnteredPath(): Promise<void> {
 }
 
 async function openPath(path: string): Promise<void> {
-  if (opening.value || pickerBusy.value || connection.value) return;
-  const generation = ++connectionGeneration;
+  if (opening.value || pickerBusy.value) return;
+  const existing = sessions.value.find((session) => session.connection.path === path);
+  if (existing) {
+    databaseSessions.activate(existing.connection.id);
+    return;
+  }
+  const generation = ++openGeneration;
   selectedPath.value = path;
   opening.value = true;
-  errorMessage.value = "";
+  openErrorMessage.value = "";
   try {
     const opened = await openDatabasePath(path, openLocalDatabase, catalog);
     applyCatalogState(opened.catalogState);
-    if (generation === connectionGeneration) connection.value = opened.connection;
+    if (generation !== openGeneration) {
+      await closeDatabase(opened.connection.id);
+      return;
+    }
+    const result = databaseSessions.add(opened.connection);
+    if (!result.added) await closeDatabase(opened.connection.id);
   } catch (error) {
-    if (generation === connectionGeneration)
-      errorMessage.value = normalizeBackendError(error).message;
+    if (generation === openGeneration)
+      openErrorMessage.value = normalizeBackendError(error).message;
   } finally {
-    if (generation === connectionGeneration) opening.value = false;
+    if (generation === openGeneration) opening.value = false;
   }
 }
 
@@ -145,60 +166,54 @@ function applyCatalogState(state: import("./types/connectionCatalog").Connection
   persistenceWarning.value = state.persistenceWarning;
 }
 
-function formatOpenedAt(timestamp: string): string {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(timestamp));
+function setWorkspaceBusy(connectionId: number, busy: boolean): void {
+  const session = sessions.value.find((candidate) => candidate.connection.id === connectionId);
+  if (session) session.workspaceBusy = busy;
 }
 
-async function closeConnection(): Promise<void> {
-  if (!connection.value || controlsDisabled.value) return;
-  const current = connection.value;
-  const generation = ++connectionGeneration;
-  closing.value = true;
-  errorMessage.value = "";
+function setToolsBusy(connectionId: number, busy: boolean): void {
+  const session = sessions.value.find((candidate) => candidate.connection.id === connectionId);
+  if (session) session.toolsBusy = busy;
+}
+
+async function closeConnection(connectionId = activeConnectionId.value): Promise<void> {
+  if (connectionId === null || closingConnectionIds.value.has(connectionId)) return;
+  const session = sessions.value.find((candidate) => candidate.connection.id === connectionId);
+  if (!session || session.workspaceBusy || session.toolsBusy || session.schemaRefreshing) return;
+  closingConnectionIds.value = new Set(closingConnectionIds.value).add(connectionId);
+  session.errorMessage = "";
   try {
-    await closeDatabase(current.id);
-    if (generation !== connectionGeneration) return;
-    connection.value = null;
-    selectedTable.value = null;
-    selectedPath.value = "";
-    workspaceBusy.value = false;
-    toolsBusy.value = false;
-    errorMessage.value = "";
+    await closeDatabase(connectionId);
+    databaseSessions.remove(connectionId);
+    if (!sessions.value.length) selectedPath.value = "";
   } catch (error) {
-    if (generation === connectionGeneration)
-      errorMessage.value = normalizeBackendError(error).message;
+    session.errorMessage = normalizeBackendError(error).message;
   } finally {
-    if (generation === connectionGeneration) closing.value = false;
+    const next = new Set(closingConnectionIds.value);
+    next.delete(connectionId);
+    closingConnectionIds.value = next;
   }
 }
 
-function applySqlImport(schema: import("./types/database").DatabaseSchema): void {
-  const current = connection.value;
-  if (!current) return;
-  const imported = applyImportedSchema(current, schema);
-  if (connection.value?.id !== current.id) return;
-  connection.value = imported;
-  if (!selectedTableExists(schema, selectedTable.value)) selectedTable.value = null;
+function applySqlImport(connectionId: number, schema: import("./types/database").DatabaseSchema): void {
+  const session = sessions.value.find((candidate) => candidate.connection.id === connectionId);
+  if (!session) return;
+  session.connection = applyImportedSchema(session.connection, schema);
+  if (!selectedTableExists(schema, session.selectedTable)) session.selectedTable = null;
 }
 
-async function updateSchema(): Promise<void> {
-  const current = connection.value;
-  if (!current) return;
-  const generation = connectionGeneration;
-  schemaRefreshing.value = true;
+async function updateSchema(connectionId = activeConnectionId.value): Promise<void> {
+  if (connectionId === null) return;
+  const session = sessions.value.find((candidate) => candidate.connection.id === connectionId);
+  if (!session) return;
+  session.schemaRefreshing = true;
   try {
-    const schema = await refreshSchema(current.id);
-    if (
-      generation === connectionGeneration &&
-      connection.value?.id === current.id
-    ) {
-      connection.value = { ...current, schema };
-    }
+    const schema = await refreshSchema(connectionId);
+    if (sessions.value.includes(session)) session.connection = { ...session.connection, schema };
   } catch (error) {
-    if (generation === connectionGeneration)
-      errorMessage.value = normalizeBackendError(error).message;
+    if (sessions.value.includes(session)) session.errorMessage = normalizeBackendError(error).message;
   } finally {
-    if (generation === connectionGeneration) schemaRefreshing.value = false;
+    if (sessions.value.includes(session)) session.schemaRefreshing = false;
   }
 }
 </script>
@@ -213,88 +228,36 @@ async function updateSchema(): Promise<void> {
       </div>
       <span v-if="connection" class="chip rounded-full">
         <span class="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" aria-hidden="true"></span>
-        Connected · Local SQLite
+        {{ sessions.length }} connected · Local SQLite
       </span>
       <span v-else class="chip hidden rounded-full sm:inline-flex">Local · SQLite</span>
     </header>
-    <section v-if="!hasConnection" class="relative mx-auto grid min-h-0 max-w-5xl flex-1 items-center gap-12 overflow-auto px-6 py-16 lg:grid-cols-[1fr_400px]">
-      <div class="relative max-w-xl">
-        <span class="mb-5 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/8 px-3 py-1.5 text-2xs font-medium text-accent"><span class="size-1.5 rounded-full bg-accent"></span>Local-first SQLite</span>
-        <h1 class="text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">A focused workspace<br /><span class="text-accent">for your databases.</span></h1>
-        <p class="mt-5 max-w-md text-sm leading-7 text-slate-400">Browse schemas, edit data, run queries, and export results without your database ever leaving this device.</p>
-        <ul class="mt-7 flex flex-wrap gap-2">
-          <li class="chip"><Table2 :size="11" /> Browse schemas</li>
-          <li class="chip"><Pencil :size="11" /> Edit rows</li>
-          <li class="chip"><SquareTerminal :size="11" /> Run SQL</li>
-          <li class="chip"><Download :size="11" /> Export data</li>
-        </ul>
-      </div>
-      <form class="rounded-2xl border border-white/10 bg-panel p-6 shadow-2xl shadow-black/20" @submit.prevent="openEnteredPath">
-        <div class="mb-5 grid size-11 place-items-center rounded-xl border border-accent/15 bg-accent/8 text-accent" aria-hidden="true"><Database :size="20" /></div>
-        <div>
-          <h2 class="text-base font-semibold text-white">Open a SQLite database</h2>
-          <p class="mt-1 text-xs leading-5 text-slate-500">Enter the path to, or choose, an existing <code>.db</code>, <code>.sqlite</code>, or <code>.sqlite3</code> file.</p>
-        </div>
-        <label class="field-label mt-6" for="database-path">Database path</label>
-        <div class="relative mt-2">
-          <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" aria-hidden="true"><FolderOpen :size="13" /></span>
-          <input
-            id="database-path"
-            v-model="selectedPath"
-            class="field pl-9"
-            type="text"
-            placeholder="/path/to/database.sqlite"
-            :disabled="opening || pickerBusy"
-            @input="errorMessage = ''"
-          />
-        </div>
-        <div class="mt-3 grid grid-cols-2 gap-2">
-          <button class="btn btn-primary" :disabled="opening || pickerBusy">
-            {{ opening ? "Opening…" : "Open database" }}
-          </button>
-          <button type="button" class="btn" :disabled="opening || pickerBusy" @click="openDatabase">
-            <FolderOpen :size="13" /> {{ pickerBusy ? "Choosing…" : "Choose file" }}
-          </button>
-        </div>
-        <p v-if="errorMessage" class="alert alert-error mt-3" role="alert">
-          {{ errorMessage }}
-        </p>
-        <p v-if="persistenceWarning" class="alert alert-warn mt-3" role="status">
-          Connection metadata could not be saved. Database work still works; check local storage permissions.
-        </p>
-      </form>
-      <section
-        v-if="savedConnections.length || recentConnections.length"
-        class="col-span-full grid max-h-64 gap-5 overflow-auto rounded-xl border border-white/8 bg-[#0f131a] p-5 lg:col-start-2"
-        aria-label="Saved and recent databases"
-      >
-        <div v-if="savedConnections.length" class="space-y-2">
-          <h2 class="eyebrow flex items-center gap-1.5"><Star :size="11" class="text-accent/70" /> Saved</h2>
-          <ul class="catalog-list">
-            <li v-for="entry in savedConnections" :key="entry.id">
-              <span class="ml-2 grid size-4 shrink-0 place-items-center text-slate-600" aria-hidden="true"><Database :size="11" /></span>
-              <button type="button" class="grid min-w-0 flex-1 rounded-lg px-3 py-2 text-left transition hover:bg-white/5" :disabled="controlsDisabled" @click="openPath(entry.path)">
-                <strong class="truncate text-xs font-medium text-slate-200">{{ entry.displayName }}</strong><span class="truncate text-2xs text-slate-500">{{ entry.path }}</span>
-              </button>
-              <button type="button" class="px-2 text-2xs text-slate-600 hover:text-rose-300" :disabled="controlsDisabled" :aria-label="`Forget saved connection ${entry.displayName}; database files are not deleted`" @click="forgetConnection(entry)">Forget</button>
-            </li>
-          </ul>
-        </div>
-        <div v-if="recentConnections.length" class="space-y-2">
-          <h2 class="eyebrow flex items-center gap-1.5"><Clock :size="11" /> Recent</h2>
-          <ul class="catalog-list">
-            <li v-for="entry in recentConnections" :key="entry.id">
-              <span class="ml-2 grid size-4 shrink-0 place-items-center text-slate-600" aria-hidden="true"><Database :size="11" /></span>
-              <button type="button" class="grid min-w-0 flex-1 rounded-lg px-3 py-2 text-left transition hover:bg-white/5" :disabled="controlsDisabled" @click="openPath(entry.path)">
-                <strong class="truncate text-xs font-medium text-slate-200">{{ entry.displayName }}</strong><span class="truncate text-2xs text-slate-500">{{ entry.path }} · {{ formatOpenedAt(entry.lastOpenedAt) }}</span>
-              </button>
-              <button type="button" class="px-2 text-2xs text-slate-600 hover:text-rose-300" :disabled="controlsDisabled" :aria-label="`Forget recent connection ${entry.displayName}; database files are not deleted`" @click="forgetConnection(entry)">Forget</button>
-            </li>
-          </ul>
-        </div>
-        <p class="text-2xs text-slate-600">Forget removes LiteStation metadata only. It never deletes database files.</p>
-      </section>
-    </section>
+    <DatabaseTabs
+      v-if="hasConnection"
+      :sessions="sessions"
+      :active-connection-id="activeConnectionId"
+      :opening="opening || pickerBusy"
+      :closing-connection-ids="closingConnectionIds"
+      :busy-connection-ids="busyConnectionIds"
+      @activate="databaseSessions.activate"
+      @close="closeConnection"
+      @open="openDatabase"
+    />
+    <WelcomeScreen
+      v-if="!hasConnection"
+      v-model:selected-path="selectedPath"
+      :opening="opening"
+      :picker-busy="pickerBusy"
+      :error-message="openErrorMessage"
+      :persistence-warning="persistenceWarning"
+      :saved-connections="savedConnections"
+      :recent-connections="recentConnections"
+      @clear-error="openErrorMessage = ''"
+      @choose="openDatabase"
+      @submit="openEnteredPath"
+      @open="openPath"
+      @forget="forgetConnection"
+    />
     <section v-else class="grid min-h-0 flex-1 grid-cols-[240px_minmax(0,1fr)] overflow-hidden lg:grid-cols-[260px_minmax(0,1fr)]">
       <aside class="flex min-h-0 flex-col overflow-hidden border-r border-white/8 bg-surface p-3">
         <div v-if="connection" class="mb-3 flex shrink-0 items-center gap-2.5 rounded-lg border border-white/8 bg-white/[.025] px-3 py-2.5">
@@ -335,8 +298,8 @@ async function updateSchema(): Promise<void> {
         <p v-if="persistenceWarning" class="alert alert-warn mb-3" role="status">
           Connection metadata could not be saved. Database work still works; check local storage permissions.
         </p>
-        <p v-if="errorMessage" class="alert alert-error mb-3" role="alert">
-          {{ errorMessage }}
+        <p v-if="activeSession?.errorMessage" class="alert alert-error mb-3" role="alert">
+          {{ activeSession.errorMessage }}
         </p>
         <TableWorkspace
           v-if="connection && selectedTable"
@@ -344,15 +307,15 @@ async function updateSchema(): Promise<void> {
           :connection-id="connection.id"
           :table-name="selectedTable"
           :indexes="connection.schema.indexes"
-          @busy-change="workspaceBusy = $event"
+          @busy-change="setWorkspaceBusy(connection.id, $event)"
         />
         <SqlWorkspace
           v-else-if="connection"
           :key="connection.id"
           :connection-id="connection.id"
           v-model="sqlSource"
-          @schema-changed="updateSchema"
-          @busy-change="workspaceBusy = $event"
+          @schema-changed="updateSchema(connection.id)"
+          @busy-change="setWorkspaceBusy(connection.id, $event)"
         />
       </section>
     </section>
@@ -365,18 +328,18 @@ async function updateSchema(): Promise<void> {
       <div class="ml-auto flex items-center gap-1">
         <DatabaseTools
           :connection-id="connection.id"
-          @busy-change="toolsBusy = $event"
-          @schema-imported="applySqlImport"
+          @busy-change="setToolsBusy(connection.id, $event)"
+          @schema-imported="applySqlImport(connection.id, $event)"
         />
         <span class="mx-1 h-4 w-px bg-white/10" aria-hidden="true"></span>
         <button
           type="button"
           class="icon-btn"
           :disabled="controlsDisabled"
-          :aria-label="schemaRefreshing ? 'Refreshing schema…' : 'Refresh schema'"
-          :title="schemaRefreshing ? 'Refreshing schema…' : 'Refresh schema'"
-          @click="updateSchema"
-        ><RefreshCw :size="14" :class="{ 'animate-spin': schemaRefreshing }" /></button>
+          :aria-label="activeSession?.schemaRefreshing ? 'Refreshing schema…' : 'Refresh schema'"
+          :title="activeSession?.schemaRefreshing ? 'Refreshing schema…' : 'Refresh schema'"
+          @click="updateSchema(connection.id)"
+        ><RefreshCw :size="14" :class="{ 'animate-spin': activeSession?.schemaRefreshing }" /></button>
         <button
           v-if="activeCatalogEntry?.saved"
           type="button"
@@ -410,7 +373,7 @@ async function updateSchema(): Promise<void> {
           :disabled="controlsDisabled"
           aria-label="Disconnect"
           title="Disconnect"
-          @click="closeConnection"
+          @click="closeConnection()"
         ><Unplug :size="14" /></button>
       </div>
     </footer>
